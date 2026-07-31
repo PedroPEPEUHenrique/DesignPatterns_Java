@@ -42,3 +42,70 @@ public class ItemPedido{
     }
 }
 
+public void removerItensInvalidos(Collection‹ItemPedido› itens) {
+            Iterator‹ItemPedido› iterator = itens.iterator();
+            while (iterator.hasNext()) {
+            ItemPedido item = iterator.next();
+            if (! isValido(item)) {
+            itens.remove(item);
+            }
+            }
+            }
+
+public boolean isValido(ItemPedido item){
+    return (item.getQuantidade()> 0 && item.getQuantidade() < 100);
+}
+
+//O Factory Method resolve o problema mais geral de evitar que o módulo cliente precise instanciar diretamente uma dentre várias implementações de uma abstração, fazendo com que ele dependa apenas da abstração e não das implementações concretas.
+
+// Padrão Strategy
+public interface PagamentoStrategy {
+    void pagar(double valor);
+}
+
+public class PagamentoCartao implements PagamentoStrategy {
+    @Override
+    public void pagar(double valor) {
+        System.out.println("Pagamento de " + valor + " com Cartão de Crédito.");
+    }
+}
+public class PagamentoPix implements PagamentoStrategy {
+    @Override
+    public void pagar(double valor)  {
+        System.out.println("Pagamento de " + valor + " com Pix.");
+    }
+}
+
+// Padrão Factory Method
+public abstract class PagamentoFactory {
+    public abstract PagamentoStrategy criarMetodoPagamento();
+}
+
+public class CartaoFactory extends PagamentoFactory {
+    @Override
+    public PagamentoStrategy criarMetodoPagamento() {
+        return new PagamentoCartao();
+    }
+}
+public class PixFactory extends PagamentoFactory {
+    @Override
+    public PagamentoStrategy criarMetodoPagamento() {
+        return new PagamentoPix();
+    }
+}
+
+// Classe Cliente
+public class ServicoPagamento {
+    private PagamentoStrategy pagamento;
+
+    public ServicoPagamento (PagamentoFactory factory) {
+        this. pagamento = factory.criarMetodoPagamento();
+    }
+    public void executarPagamento(double valor) {
+        pagamento.pagar(valor);
+    }
+
+    public static void main(String[] args) {
+        new ServicoPagamento(new CartaoFactory()).executarPagamento(100);
+    }
+}
