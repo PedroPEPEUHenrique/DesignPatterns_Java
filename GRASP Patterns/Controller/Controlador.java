@@ -1,0 +1,270 @@
+//GRASP - CONTROLLER (Controlador)
+
+//Problema: qual é o primeiro objeto, além da camada de interface, que recebe e coordena uma
+//operação do sistema?
+//Solução: atribua a responsabilidade a uma classe que represente
+//o SISTEMA como um todo (um "controlador de fachada"), ou
+//um CASO DE USO específico (um "controlador de sessão", como RegistrarVendaHandler).
+
+//Suponha que a sua tarefa seja registrar uma venda a partir da tela do caixa. A tela precisa:
+//abrir a venda, acrescentar itens, aplicar desconto de fidelidade, encerrar e cobrar.
+//Imagine a lógica dessas etapas escrita nos eventos de clique da tela. A regra de negócio fica
+//presa à interface: não dá para reaproveitá-la na API REST, não dá para testá-la sem a tela, e
+//trocar a interface significa reescrever a regra.
+
+import java.util.ArrayList;
+import java.util.List;
+
+// DOMÍNIO - as classes que efetivamente sabem das regras.
+
+class Produto {
+    private final String sku;
+    private final String nome;
+    private final int precoEmCentavos;
+
+    Produto(String sku, String nome, int precoEmCentavos) {
+        this.sku = sku;
+        this.nome = nome;
+        this.precoEmCentavos = precoEmCentavos;
+    }
+
+    String getSku() {
+        return sku;
+    }
+
+    String getNome() {
+        return nome;
+    }
+
+    int getPrecoEmCentavos() {
+        return precoEmCentavos;
+    }
+}
+
+class CatalogoProdutos {
+
+    private final List<Produto> produtos = List.of(
+            new Produto("TEC-001", "Teclado", 25000),
+            new Produto("MOU-002", "Mouse", 8000),
+            new Produto("MON-003", "Monitor", 90000));
+
+    Produto porSku(String sku) {
+        return produtos.stream()
+                       .filter(p -> p.getSku().equals(sku))
+                       .findFirst()
+                       .orElseThrow(() -> new IllegalArgumentException("sku inexistente: " + sku));
+    }
+}
+
+class LinhaVenda {
+    private final Produto produto;
+    private final int quantidade;
+
+    LinhaVenda(Produto produto, int quantidade) {
+        this.produto = produto;
+        this.quantidade = quantidade;
+    }
+
+    int subtotalEmCentavos() {
+        return produto.getPrecoEmCentavos() * quantidade;
+    }
+
+    Produto getProduto() {
+        return produto;
+    }
+
+    int getQuantidade() {
+        return quantidade;
+    }
+}
+
+class Venda {
+    private final List<LinhaVenda> linhas = new ArrayList<>();
+    private boolean encerrada;
+    private int descontoEmCentavos;
+
+    void adicionar(Produto produto, int quantidade) {
+        if (encerrada) {
+            throw new IllegalStateException("venda já encerrada");
+        }
+        linhas.add(new LinhaVenda(produto, quantidade));
+    }
+
+    void aplicarDesconto(int descontoEmCentavos) {
+        this.descontoEmCentavos = descontoEmCentavos;
+    }
+
+    void encerrar() {
+        encerrada = true;
+    }
+
+    int totalEmCentavos() {
+        int total = 0;
+        for (LinhaVenda linha : linhas) {
+            total += linha.subtotalEmCentavos();
+        }
+        return total - descontoEmCentavos;
+    }
+
+    boolean isEncerrada() {
+        return encerrada;
+    }
+
+    List<LinhaVenda> getLinhas() {
+        return linhas;
+    }
+}
+
+class ProgramaFidelidade {
+
+    int descontoEmCentavos(String cpf, int totalEmCentavos) {
+        return cpf.isEmpty() ? 0 : (int) (totalEmCentavos * 0.05);
+    }
+}
+
+class ServicoPagamento {
+
+    String cobrar(int valorEmCentavos, String meio) {
+        System.out.println("  [pagamento] " + valorEmCentavos + " centavos via " + meio);
+        return "PAG-" + System.nanoTime() % 10000;
+    }
+}
+
+// O CONTROLADOR (de caso de uso)
+// Recebe os EVENTOS DE SISTEMA vindos da interface e os coordena. Repare no que ele NÃO faz:
+//  não calcula total (quem sabe é a Venda),
+//  não decide desconto (quem sabe é o ProgramaFidelidade),
+//  não sabe buscar produto (quem sabe é o Catálogo).
+// Ele apenas delega, na ordem certa. Um controlador que calcula vira um God Object.
+class RegistrarVendaController {
+
+    private final CatalogoProdutos catalogo;
+    private final ProgramaFidelidade fidelidade;
+    private final ServicoPagamento pagamento;
+    private Venda vendaAtual;
+
+    RegistrarVendaController(CatalogoProdutos catalogo, ProgramaFidelidade fidelidade,
+                             ServicoPagamento pagamento) {
+        this.catalogo = catalogo;
+        this.fidelidade = fidelidade;
+        this.pagamento = pagamento;
+    }
+
+    // Cada método público corresponde a UM evento de sistema do caso de uso.
+    public void iniciarNovaVenda() {
+        vendaAtual = new Venda();
+        System.out.println("venda iniciada");
+    }
+
+    public void informarItem(String sku, int quantidade) {
+        exigirVendaAberta();
+        Produto produto = catalogo.porSku(sku);
+        vendaAtual.adicionar(produto, quantidade);
+        System.out.println("  + " + quantidade + "x " + produto.getNome());
+    }
+
+    public void encerrarVenda(String cpf) {
+        exigirVendaAberta();
+        int desconto = fidelidade.descontoEmCentavos(cpf, vendaAtual.totalEmCentavos());
+        vendaAtual.aplicarDesconto(desconto);
+        vendaAtual.encerrar();
+        System.out.println("  desconto de fidelidade: " + desconto);
+    }
+
+    public String efetuarPagamento(String meio) {
+        if (vendaAtual == null || !vendaAtual.isEncerrada()) {
+            throw new IllegalStateException("venda não encerrada");
+        }
+        return pagamento.cobrar(vendaAtual.totalEmCentavos(), meio);
+    }
+
+    // O controlador devolve dados prontos para exibição, e NÃO o objeto de domínio. Assim a tela
+    // não passa a depender do modelo - se Venda mudar, a tela não quebra.
+    public String resumoParaTela() {
+        StringBuilder resumo = new StringBuilder();
+        for (LinhaVenda linha : vendaAtual.getLinhas()) {
+            resumo.append("    ").append(linha.getQuantidade()).append("x ")
+                  .append(linha.getProduto().getNome()).append(" = ")
+                  .append(linha.subtotalEmCentavos()).append("\n");
+        }
+        resumo.append("    TOTAL: ").append(vendaAtual.totalEmCentavos());
+        return resumo.toString();
+    }
+
+    private void exigirVendaAberta() {
+        if (vendaAtual == null || vendaAtual.isEncerrada()) {
+            throw new IllegalStateException("não há venda aberta");
+        }
+    }
+}
+
+// INTERFACES - duas camadas de apresentação completamente diferentes usando o MESMO controlador.
+// É essa reutilização que prova que a regra não vazou para a interface.
+
+class TelaCaixa {
+
+    private final RegistrarVendaController controller;
+
+    TelaCaixa(RegistrarVendaController controller) {
+        this.controller = controller;
+    }
+
+    void simularOperacao() {
+        System.out.println("== tela do caixa ==");
+        controller.iniciarNovaVenda();
+        controller.informarItem("TEC-001", 1);
+        controller.informarItem("MOU-002", 2);
+        controller.encerrarVenda("111.222.333-44");
+        System.out.println(controller.resumoParaTela());
+        System.out.println("  comprovante: " + controller.efetuarPagamento("cartão"));
+    }
+}
+
+class ApiVendas {
+
+    private final RegistrarVendaController controller;
+
+    ApiVendas(RegistrarVendaController controller) {
+        this.controller = controller;
+    }
+
+    void postVenda() {
+        System.out.println("== API REST ==");
+        controller.iniciarNovaVenda();
+        controller.informarItem("MON-003", 1);
+        controller.encerrarVenda("");   // sem CPF: sem desconto
+        System.out.println(controller.resumoParaTela());
+        System.out.println("  comprovante: " + controller.efetuarPagamento("pix"));
+    }
+}
+
+// Classe Cliente
+class Controlador {
+
+    public static void main(String[] args) {
+        CatalogoProdutos catalogo = new CatalogoProdutos();
+        ProgramaFidelidade fidelidade = new ProgramaFidelidade();
+        ServicoPagamento pagamento = new ServicoPagamento();
+
+        new TelaCaixa(new RegistrarVendaController(catalogo, fidelidade, pagamento))
+                .simularOperacao();
+
+        System.out.println();
+
+        new ApiVendas(new RegistrarVendaController(catalogo, fidelidade, pagamento))
+                .postVenda();
+    }
+}
+
+//Controlador de FACHADA x controlador de CASO DE USO:
+//Fachada - uma classe só para o sistema inteiro. Serve quando há poucos eventos de sistema.
+//Caso de uso - uma classe por caso de uso. É o certo quando o sistema é grande; evita que a
+//  fachada vire um God Object com dezenas de métodos sem relação entre si.
+//
+//Sintomas de um controlador inchado ("bloated controller"): existe um único controlador para tudo;
+//ele tem estado que deveria estar no domínio; ele não delega, ele calcula. A cura é dividir por
+//caso de uso e devolver as regras às classes especialistas.
+//
+//Na prática: é o C do MVC, o @Controller/@RestController do Spring, o recurso JAX-RS de um
+//endpoint. E é o mesmo papel da Facade do GoF, com a diferença de que aqui a intenção é ser o
+//ponto de entrada da CAMADA DE DOMÍNIO, e não simplificar um subsistema qualquer.
