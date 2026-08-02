@@ -1,22 +1,13 @@
-//Suponha que a sua tarefa seja reagir à baixa de estoque de um produto. Quando a quantidade muda,
-//é preciso:
-//Alertar o comprador quando cruzar o ponto de reposição
-//Atualizar o painel da loja
-//Registrar a movimentação em auditoria
-
-//Imagine o método baixarEstoque() chamando os três serviços diretamente. A classe de estoque, que
-//deveria cuidar só de quantidade, passa a depender de e-mail, de painel e de auditoria. E o
-//quarto interessado que aparecer amanhã obriga a alterá-la de novo - violação direta do princípio
-//aberto/fechado.
-
-//O Observer resolve o problema de definir uma dependência UM-PARA-MUITOS entre objetos, de modo
-//que quando um objeto muda de estado todos os seus dependentes são notificados automaticamente.
+//Ao mudar a quantidade em estoque é preciso alertar o comprador, atualizar o painel e registrar
+//em auditoria. Chamando os três diretamente, a classe de estoque passa a depender de e-mail,
+//painel e auditoria - e o quarto interessado obriga a alterá-la.
+//O Observer define uma dependência UM-PARA-MUITOS: quando um objeto muda de estado, todos os seus
+//dependentes são notificados automaticamente.
 
 import java.util.ArrayList;
 import java.util.List;
 
-// O evento. Passar um objeto de evento em vez de chamar getters no sujeito é o modelo "push":
-// evita que cada observador tenha que consultar o sujeito de volta, e deixa explícito o que mudou.
+// Modelo "push": passar um objeto de evento evita que cada observador consulte o sujeito de volta.
 class EventoEstoque {
     private final String sku;
     private final int quantidadeAnterior;
@@ -51,14 +42,12 @@ class EventoEstoque {
     }
 }
 
-// Padrão Observer - a interface Observer
+// Observer
 interface ObservadorEstoque {
     void aoMudarEstoque(EventoEstoque evento);
 }
 
-// Padrão Observer - o Subject
-// Conhece apenas a interface ObservadorEstoque. Não sabe quantos observadores existem, quem são,
-// nem o que fazem - e é justamente essa ignorância que o mantém fechado para alteração.
+// Subject: conhece apenas a interface. Essa ignorância é o que o mantém fechado para alteração.
 class Estoque {
 
     private final String sku;
@@ -105,7 +94,7 @@ class Estoque {
     }
 }
 
-// OBSERVADORES CONCRETOS - cada um com sua responsabilidade, sem saber da existência dos outros.
+// Observadores concretos: cada um com sua responsabilidade, sem saber dos outros.
 
 class AlertaComprador implements ObservadorEstoque {
 
@@ -141,7 +130,7 @@ class AuditoriaMovimentacao implements ObservadorEstoque {
     }
 }
 
-// Observador que se DESCADASTRA durante a notificação - o caso que justifica a cópia da lista.
+// Observador que se descadastra durante a notificação: o caso que justifica a cópia da lista.
 class AvisoUnicoDeEsgotamento implements ObservadorEstoque {
 
     private final Estoque estoque;
@@ -159,7 +148,7 @@ class AvisoUnicoDeEsgotamento implements ObservadorEstoque {
     }
 }
 
-// Classe Cliente
+// Cliente
 class MonitorEstoque {
 
     public static void main(String[] args) {
@@ -171,7 +160,6 @@ class MonitorEstoque {
         teclado.registrar(new AuditoriaMovimentacao());
         teclado.registrar(new AvisoUnicoDeEsgotamento(teclado));
 
-        // Um observador novo pode ser uma lambda: a interface tem um único método abstrato.
         teclado.registrar(evento -> {
             if (evento.getQuantidadeAtual() < 0) {
                 System.out.println("  [consistência] ERRO: estoque negativo em " + evento.getSku());
@@ -180,25 +168,18 @@ class MonitorEstoque {
 
         teclado.baixar(5);
         System.out.println("---");
-        teclado.baixar(3);   // cruza o ponto de reposição: o comprador é alertado
+        teclado.baixar(3);   // cruza o ponto de reposição
         System.out.println("---");
         teclado.baixar(4);   // esgota: o aviso único dispara e sai da lista
         System.out.println("---");
-        teclado.baixar(1);   // o aviso único já não aparece
+        teclado.baixar(1);
         System.out.println("---");
         teclado.repor(20);
     }
 }
 
-//Pontos de atenção:
-//Ordem de notificação - o padrão não garante nenhuma. Se um observador depende de outro ter
-//  rodado antes, a modelagem está errada.
-//Vazamento de memória - o sujeito guarda referência forte para cada observador. Observador que
-//  não se descadastra impede a coleta de lixo; é o "lapsed listener problem".
-//Notificação em cascata - um observador que altera o sujeito dispara nova notificação e pode
-//  gerar recursão infinita.
-//
-//Na plataforma Java: java.util.Observer/Observable existem desde a versão 1.0, mas foram
-//DEPRECIADOS no Java 9 por serem pouco flexíveis e não serializáveis com segurança. Hoje se usa
-//uma interface própria (como acima), java.beans.PropertyChangeListener, Flow.Publisher/Subscriber
-//(fluxos reativos, Java 9+) ou eventos CDI com @Observes.
+//Pontos de atenção: o padrão não garante ORDEM de notificação; o sujeito guarda referência forte
+//para cada observador, então quem não se descadastra vaza memória ("lapsed listener"); e um
+//observador que altera o sujeito dispara nova notificação, podendo gerar recursão infinita.
+//java.util.Observer/Observable foram DEPRECIADOS no Java 9. Hoje se usa interface própria,
+//PropertyChangeListener, Flow.Publisher/Subscriber ou eventos CDI com @Observes.

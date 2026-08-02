@@ -1,13 +1,10 @@
 //JAKARTA EE - CAMADA DE APRESENTAÇÃO: SERVLET, JAX-RS E BEAN VALIDATION
-
-//ATENÇÃO: material de estudo. NÃO compila sem as APIs do Jakarta EE no classpath
-//(jakarta.servlet-api, jakarta.ws.rs-api, jakarta.validation-api, jakarta.json.bind-api).
-
-//A camada de apresentação é a fronteira do sistema: ela recebe o mundo externo (HTTP, JSON,
-//formulário) e o traduz para o vocabulário do domínio. Duas regras valem para tudo aqui:
-//1. NENHUMA regra de negócio nesta camada - ela delega ao serviço (Controller, do GRASP).
-//2. NENHUMA entidade JPA cruzando a fronteira - use DTOs, senão o modelo interno vira contrato
-//   público e qualquer refatoração quebra o cliente da API.
+//NÃO compila sem as APIs do Jakarta EE (servlet-api, ws.rs-api, validation-api, json.bind-api).
+//A camada de apresentação é a fronteira: recebe o mundo externo (HTTP, JSON, formulário) e o
+//traduz para o vocabulário do domínio. Duas regras valem para tudo aqui:
+//1. NENHUMA regra de negócio - ela delega ao serviço (Controller, do GRASP).
+//2. NENHUMA entidade JPA cruzando a fronteira - senão o modelo interno vira contrato público e
+//   qualquer refatoração quebra o cliente da API.
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -46,20 +43,12 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
 
-// ---------------------------------------------------------------------------
-// DTO - DATA TRANSFER OBJECT
-//
-// Padrão corporativo clássico (Fowler / Core J2EE Patterns): um objeto simples, sem
-// comportamento, cuja única função é atravessar a fronteira carregando dados.
-// Motivos para existir: desacoplar o contrato externo do modelo interno, evitar
-// LazyInitializationException ao serializar entidades, e não expor campos internos.
-// É uma Fabricação Pura (GRASP) - "PedidoDTO" não existe no vocabulário do negócio.
-// ---------------------------------------------------------------------------
-
+// DTO - objeto sem comportamento cuja função é atravessar a fronteira. Desacopla o contrato
+// externo do modelo interno, evita LazyInitializationException ao serializar entidades e não expõe
+// campos internos. É uma Fabricação Pura.
 class NovoPedidoDTO {
 
-    // Bean Validation: as restrições são DECLARATIVAS e ficam junto do dado, em vez de espalhadas
-    // em ifs de validação por toda a aplicação.
+    // Bean Validation: as restrições ficam junto do dado, em vez de espalhadas em ifs.
     @NotBlank(message = "o CPF é obrigatório")
     @Size(min = 11, max = 14, message = "CPF deve ter entre 11 e 14 caracteres")
     private String cpfCliente;
@@ -147,29 +136,22 @@ class PedidoResumoDTO {
     }
 }
 
-// ---------------------------------------------------------------------------
-// JAX-RS - SERVIÇOS REST
-// ---------------------------------------------------------------------------
-
-// Define o prefixo de todos os recursos: as URLs ficam em /api/...
+// Prefixo de todos os recursos: as URLs ficam em /api/...
 @ApplicationPath("/api")
 class ConfiguracaoRest extends Application {
 }
 
-// RECURSO REST
-// Cada método é um endpoint. Repare que o recurso não abre transação, não toca em EntityManager
-// e não calcula nada: ele traduz HTTP para chamada de serviço e o resultado de volta para HTTP.
+// RECURSO REST: não abre transação, não toca em EntityManager e não calcula. Traduz HTTP para
+// chamada de serviço e o resultado de volta para HTTP.
 @Path("/pedidos")
 @RequestScoped
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 class PedidoResource {
 
-    // O serviço de negócio vem por injeção - o recurso não sabe como ele é construído.
     @Inject
     private ServicoPedidoRest servico;
 
-    // GET /api/pedidos?status=PAGO&pagina=0
     // @QueryParam lê a query string; @DefaultValue evita nulo quando o parâmetro não vem.
     @GET
     public List<PedidoResumoDTO> listar(@QueryParam("status") String status,
@@ -178,9 +160,7 @@ class PedidoResource {
         return servico.listar(status, pagina, tamanho);
     }
 
-    // GET /api/pedidos/PED-1
-    // Response permite controlar o código HTTP. Devolver 404 para "não encontrado" faz parte do
-    // contrato REST - devolver 200 com corpo vazio é um erro comum.
+    // Devolver 404 faz parte do contrato REST - devolver 200 com corpo vazio é erro comum.
     @GET
     @Path("/{codigo}")
     public Response porCodigo(@PathParam("codigo") String codigo) {
@@ -194,9 +174,8 @@ class PedidoResource {
         return Response.ok(pedido).build();
     }
 
-    // POST /api/pedidos
-    // @Valid dispara o Bean Validation ANTES do método executar. Se algo falhar, o método nem é
-    // chamado - a validação vira um interceptador, não um bloco de ifs no início do corpo.
+    // @Valid dispara o Bean Validation ANTES do método executar: a validação vira um
+    // interceptador, não um bloco de ifs no início do corpo.
     // A resposta correta para criação é 201 com o cabeçalho Location.
     @POST
     public Response criar(@Valid NovoPedidoDTO novoPedido) {
@@ -235,9 +214,8 @@ class ErroDTO {
     }
 }
 
-// TRATAMENTO CENTRALIZADO DE EXCEÇÃO
-// Sem isto, cada método do recurso teria o seu try/catch repetido. O ExceptionMapper concentra a
-// tradução de exceção para resposta HTTP num lugar só - é Indirection (GRASP) aplicada ao erro.
+// Concentra a tradução de exceção para resposta HTTP num lugar só, em vez de um try/catch repetido
+// em cada método do recurso. É Indirection aplicada ao erro.
 @Provider
 class RegraNegocioExceptionMapper implements ExceptionMapper<IllegalArgumentException> {
 
@@ -250,8 +228,6 @@ class RegraNegocioExceptionMapper implements ExceptionMapper<IllegalArgumentExce
     }
 }
 
-// Serviço de fronteira que converte DTO em chamada de domínio e domínio em DTO.
-// Em uma aplicação real ele delegaria ao EJB da camada de negócio e usaria um Assembler/Mapper.
 @RequestScoped
 class ServicoPedidoRest {
 
@@ -276,13 +252,7 @@ class ServicoPedidoRest {
     }
 }
 
-// ---------------------------------------------------------------------------
-// SERVLET - a base de toda a camada web da plataforma
-//
-// JSF, JAX-RS e os frameworks MVC rodam SOBRE Servlet. Entender o modelo ajuda a explicar o
-// comportamento das camadas de cima.
-// ---------------------------------------------------------------------------
-
+// SERVLET - JSF, JAX-RS e os frameworks MVC rodam SOBRE ele.
 @WebServlet(urlPatterns = "/pedidos")
 class PedidoServlet extends HttpServlet {
 
@@ -291,10 +261,9 @@ class PedidoServlet extends HttpServlet {
     @Inject
     private ServicoPedidoRest servico;
 
-    // ATENÇÃO à concorrência: o contêiner cria UMA instância do servlet e a compartilha entre
-    // todas as requisições, cada uma em sua thread. Atributo de instância com estado de
-    // requisição é bug de concorrência garantido - o estado vai em variável local, no request ou
-    // na sessão.
+    // CONCORRÊNCIA: o contêiner cria UMA instância do servlet e a compartilha entre todas as
+    // requisições, cada uma em sua thread. Atributo de instância com estado de requisição é bug
+    // garantido - o estado vai em variável local, no request ou na sessão.
     @Override
     protected void doGet(HttpServletRequest requisicao, HttpServletResponse resposta)
             throws ServletException, IOException {
@@ -302,18 +271,15 @@ class PedidoServlet extends HttpServlet {
         String status = requisicao.getParameter("status");
         List<PedidoResumoDTO> pedidos = servico.listar(status, 0, 20);
 
-        // Escopos de atributo:
-        //  request     - vive uma requisição
-        //  session     - vive a sessão do usuário
-        //  application - vive enquanto a aplicação estiver no ar
+        // Escopos de atributo: request (uma requisição), session (a sessão do usuário),
+        // application (enquanto a aplicação estiver no ar).
         requisicao.setAttribute("pedidos", pedidos);
 
         HttpSession sessao = requisicao.getSession();
         sessao.setAttribute("ultimaConsulta", System.currentTimeMillis());
 
-        // forward mantém a mesma requisição (o navegador não sabe que houve desvio);
-        // sendRedirect faz o navegador emitir uma requisição NOVA - é o que se usa depois de um
-        // POST, para evitar o reenvio do formulário ao atualizar a página.
+        // forward mantém a mesma requisição; sendRedirect faz o navegador emitir uma NOVA - é o
+        // que se usa depois de um POST, para evitar reenvio do formulário ao atualizar a página.
         requisicao.getRequestDispatcher("/WEB-INF/jsp/pedidos.jsp").forward(requisicao, resposta);
     }
 
@@ -321,8 +287,6 @@ class PedidoServlet extends HttpServlet {
     protected void doPost(HttpServletRequest requisicao, HttpServletResponse resposta)
             throws ServletException, IOException {
 
-        // Toda a lógica está no serviço; o servlet apenas coordena. Um doPost com regra de
-        // negócio dentro é o "bloated controller" que o GRASP alerta para evitar.
         NovoPedidoDTO dto = new NovoPedidoDTO();
         dto.setCpfCliente(requisicao.getParameter("cpf"));
 
@@ -332,8 +296,7 @@ class PedidoServlet extends HttpServlet {
     }
 }
 
-// FILTRO - intercepta requisições antes e depois do servlet.
-// É o padrão Chain of Responsibility na especificação: cada filtro decide se chama o próximo
+// FILTRO - Chain of Responsibility na especificação: cada filtro decide se chama o próximo
 // (doFilter) ou se interrompe a corrente ali mesmo.
 @WebFilter(urlPatterns = "/api/*")
 class FiltroAutenticacao implements jakarta.servlet.Filter {
@@ -352,22 +315,17 @@ class FiltroAutenticacao implements jakarta.servlet.Filter {
             return;   // NÃO chama doFilter: a corrente para aqui e o servlet nunca executa
         }
 
-        corrente.doFilter(requisicao, resposta);   // segue para o próximo elo
+        corrente.doFilter(requisicao, resposta);
     }
 }
 
-//RESUMO DA CAMADA DE APRESENTAÇÃO
+//RESUMO
 //Servlet   - base de tudo; uma instância compartilhada, cuidado com estado
 //Filter    - Chain of Responsibility para requisições transversais (auth, CORS, log, encoding)
-//JSF       - MVC baseado em componentes e estado no servidor, usa @Named + escopos CDI
-//JAX-RS    - REST por anotações; @Path, @GET/@POST/@PUT/@DELETE, @PathParam, @QueryParam
+//JSF       - MVC por componentes, com @Named + escopos CDI
+//JAX-RS    - REST por anotações
 //JSON-B    - serialização automática entre objeto e JSON
-//Bean Validation - @NotNull, @Size, @Email, @Positive, disparados por @Valid
+//Bean Validation - restrições disparadas por @Valid
 //
-//OS PADRÕES POR TRÁS
-//DTO                  - Data Transfer Object; isola o contrato externo do modelo interno
-//Front Controller     - o servlet despachante do JAX-RS/JSF, ponto único de entrada
-//Controller (GRASP)   - o Resource/Servlet coordena e delega, sem regra de negócio
-//Chain of Responsibility - a cadeia de filtros
-//Facade               - o serviço de fronteira que a camada web enxerga
-//ExceptionMapper      - Indirection para a tradução de erro em resposta HTTP
+//Padrões: DTO, Front Controller (o servlet despachante do JAX-RS/JSF), Controller do GRASP,
+//Chain of Responsibility (filtros), Facade (o serviço de fronteira) e Indirection (ExceptionMapper).

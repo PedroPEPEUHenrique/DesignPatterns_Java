@@ -1,13 +1,6 @@
-//GRASP - EXPERT / INFORMATION EXPERT (Especialista na Informação)
-
+//GRASP - EXPERT / INFORMATION EXPERT
 //Problema: a qual classe atribuir uma responsabilidade?
-//Solução: atribua a responsabilidade à classe que TEM A INFORMAÇÃO necessária para cumpri-la.
-
-//Suponha que a sua tarefa seja calcular o total de um pedido. O pedido tem itens; cada item tem
-//quantidade e preço unitário.
-//Imagine a solução em que um "ServicoCalculoPedido" pega a lista de itens do pedido, pega a
-//quantidade e o preço de cada item e faz a conta. Para isso, Pedido e ItemPedido precisam expor
-//tudo o que têm. O cálculo fica LONGE do dado, e a classe que tem o dado vira um saco de getters.
+//Solução: à classe que TEM A INFORMAÇÃO necessária para cumpri-la.
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,8 +17,7 @@ class Produto {
     }
 }
 
-// COMO NÃO FAZER
-// Objetos anêmicos: só dados, nenhum comportamento. É o "Anemic Domain Model".
+// COMO NÃO FAZER - objetos anêmicos: só dados, nenhum comportamento.
 class ItemPedidoAnemico {
     private Produto produto;
     private int quantidade;
@@ -62,9 +54,8 @@ class PedidoAnemico {
     }
 }
 
-// A responsabilidade foi parar aqui, longe do dado. Repare em quantos getters de outras classes
-// este método precisa: cada um deles é um acoplamento. Se ItemPedido mudar a forma de guardar o
-// preço, ESTA classe quebra - e ela nem deveria saber que existe preço unitário.
+// A responsabilidade foi parar longe do dado. Cada getter de outra classe é um acoplamento: se
+// ItemPedido mudar a forma de guardar o preço, ESTA classe quebra.
 class ServicoCalculoPedido {
 
     public int calcularTotal(PedidoAnemico pedido) {
@@ -76,8 +67,7 @@ class ServicoCalculoPedido {
     }
 }
 
-// COMO FAZER
-// Cada classe calcula o que consegue calcular com o que ela mesma tem.
+// COMO FAZER - cada classe calcula o que consegue com o que ela mesma tem.
 
 class ItemPedido {
     private final Produto produto;
@@ -90,8 +80,7 @@ class ItemPedido {
         this.precoUnitarioEmCentavos = precoUnitarioEmCentavos;
     }
 
-    // ESPECIALISTA: quem tem quantidade e preço unitário é o item, então o subtotal é dele.
-    // Note que agora nem precisamos expor quantidade e preço para fora.
+    // Quem tem quantidade e preço é o item: o subtotal é dele. E agora nem precisamos expor os dois.
     public int subtotalEmCentavos() {
         return quantidade * precoUnitarioEmCentavos;
     }
@@ -117,9 +106,8 @@ class Pedido {
         this.descontoEmCentavos = descontoEmCentavos;
     }
 
-    // ESPECIALISTA PARCIAL: quem tem a lista de itens é o pedido, então o total é dele. Mas ele
-    // NÃO calcula o subtotal de cada item - delega a quem sabe. A responsabilidade se distribui
-    // pela cadeia de quem tem cada informação.
+    // Quem tem a lista é o pedido: o total é dele. Mas ele NÃO calcula o subtotal de cada item -
+    // a responsabilidade se distribui pela cadeia de quem tem cada informação.
     public int totalEmCentavos() {
         int total = 0;
         for (ItemPedido item : itens) {
@@ -141,17 +129,14 @@ class Pedido {
     }
 }
 
-// Classe Cliente
 class EspecialistaNaInformacao {
 
     public static void main(String[] args) {
-        // Versão anêmica: o cliente e o serviço precisam conhecer a estrutura interna.
         PedidoAnemico anemico = new PedidoAnemico();
         anemico.adicionar(new ItemPedidoAnemico(new Produto("Teclado"), 2, 25000));
         anemico.adicionar(new ItemPedidoAnemico(new Produto("Mouse"), 1, 8000));
         System.out.println("total (anêmico): " + new ServicoCalculoPedido().calcularTotal(anemico));
 
-        // Versão com especialista: o cliente só pergunta, e cada objeto responde pelo que sabe.
         Pedido pedido = new Pedido();
         pedido.adicionar(new ItemPedido(new Produto("Teclado"), 2, 25000));
         pedido.adicionar(new ItemPedido(new Produto("Mouse"), 1, 8000));
@@ -163,13 +148,8 @@ class EspecialistaNaInformacao {
     }
 }
 
-//Consequências do Expert:
-//Mantém o encapsulamento: como o cálculo acontece onde o dado está, o dado não precisa vazar.
-//Distribui o comportamento: em vez de poucas classes gordas e muitas classes de dados, o sistema
-//  fica com classes que fazem o que lhes cabe.
-//Reforça Low Coupling e High Cohesion - por isso o Expert é considerado o padrão GRASP básico.
-//
-//Quando NÃO seguir: se atribuir a responsabilidade ao especialista criar um acoplamento indevido.
-//O caso clássico é persistência - o Pedido tem os dados a serem gravados, mas dar a ele a
-//responsabilidade de gravar acoplaria o domínio ao banco. A saída é criar uma classe que não
-//existe no domínio (um repositório), o que é o padrão Pure Fabrication.
+//Como o cálculo acontece onde o dado está, o dado não precisa vazar - o Expert reforça Low
+//Coupling e High Cohesion, e por isso é o padrão GRASP básico.
+//Quando NÃO seguir: quando atribuir a responsabilidade ao especialista criar acoplamento indevido.
+//O caso clássico é persistência - dar ao Pedido a responsabilidade de gravar acoplaria o domínio
+//ao banco. A saída é uma classe que não existe no domínio, o que é Pure Fabrication.

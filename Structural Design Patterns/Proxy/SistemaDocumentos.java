@@ -1,32 +1,22 @@
-//Suponha que a sua tarefa seja abrir documentos digitalizados de um acervo. A abstração é
-//Documento, com as operações:
-//exibir()
-//getTitulo()
-
-//Imagine que o conteúdo de cada documento tem dezenas de megabytes e vem de um serviço remoto.
-//Carregar todos ao abrir a listagem trava a aplicação, sendo que o usuário vai abrir um ou dois.
-//Some a isso a exigência de que documentos sigilosos só possam ser abertos por certos perfis e de
-//que toda abertura fique registrada em auditoria.
-
-//O Proxy resolve o problema de fornecer um SUBSTITUTO para outro objeto, controlando o acesso a
-//ele. O substituto tem a mesma interface do objeto real, então o cliente não percebe a diferença.
+//Abrir documentos digitalizados de dezenas de megabytes vindos de um serviço remoto. Carregar
+//todos ao montar a listagem trava a aplicação; além disso, documentos sigilosos exigem controle
+//de acesso e registro de auditoria.
+//O Proxy fornece um SUBSTITUTO para outro objeto, controlando o acesso a ele. Como tem a mesma
+//interface, o cliente não percebe a diferença.
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-// Padrão Proxy - o Subject
-// Proxy e objeto real implementam a MESMA interface. É isso que permite trocar um pelo outro sem
-// o cliente saber.
+// Subject: proxy e objeto real implementam a MESMA interface.
 interface Documento {
     String getTitulo();
 
     void exibir();
 }
 
-// Padrão Proxy - o RealSubject
-// O objeto caro de verdade. Repare que o custo está no CONSTRUTOR: só existir já é pesado.
+// RealSubject: o custo está no CONSTRUTOR - só existir já é pesado.
 class DocumentoDigitalizado implements Documento {
     private final String titulo;
     private final String conteudo;
@@ -52,12 +42,11 @@ class DocumentoDigitalizado implements Documento {
     }
 }
 
-// Padrão Proxy VIRTUAL
-// Adia a criação do objeto real até o primeiro uso que realmente precise dele. Note que
+// Proxy VIRTUAL
 // getTitulo() é respondido pelo próprio proxy, SEM disparar o carregamento - é aí que está o ganho.
 class ProxyVirtualDocumento implements Documento {
     private final String titulo;
-    private DocumentoDigitalizado real;   // só é criado quando (e se) for necessário
+    private DocumentoDigitalizado real;
 
     ProxyVirtualDocumento(String titulo) {
         this.titulo = titulo;
@@ -95,9 +84,7 @@ class Usuario {
     }
 }
 
-// Padrão Proxy de PROTEÇÃO
-// Verifica permissão antes de delegar. A regra de acesso fica FORA do objeto real, que continua
-// só sabendo exibir conteúdo.
+// Proxy de PROTEÇÃO: a regra de acesso fica FORA do objeto real.
 class ProxyProtecaoDocumento implements Documento {
     private final Documento real;
     private final Usuario usuario;
@@ -125,8 +112,7 @@ class ProxyProtecaoDocumento implements Documento {
     }
 }
 
-// Padrão Proxy de REGISTRO (logging / auditoria)
-// Proxies são empilháveis como decoradores: aqui um proxy embrulha outro.
+// Proxy de AUDITORIA: proxies são empilháveis, aqui um embrulha outro.
 class ProxyAuditoriaDocumento implements Documento {
     private final Documento real;
     private final Usuario usuario;
@@ -156,9 +142,7 @@ class ProxyAuditoriaDocumento implements Documento {
     }
 }
 
-// Padrão Proxy de CACHE
-// Guarda o resultado de operações caras para não repeti-las. A diferença para o Flyweight é a
-// intenção: aqui o objetivo é evitar a chamada, não economizar memória.
+// Proxy de CACHE: diferente do Flyweight, o objetivo é evitar a CHAMADA, não economizar memória.
 class ProxyCacheDocumento implements Documento {
     private static final Map<String, DocumentoDigitalizado> CACHE = new HashMap<>();
     private final String titulo;
@@ -178,14 +162,12 @@ class ProxyCacheDocumento implements Documento {
     }
 }
 
-// Classe Cliente
+// Cliente
 class SistemaDocumentos {
 
-    // O tipo do parâmetro é Documento. O cliente não distingue o objeto real de nenhum dos proxies.
     public void listar(List<Documento> documentos) {
         System.out.println("índice do acervo:");
         for (Documento documento : documentos) {
-            // Só o título: com o proxy virtual, montar esta listagem não baixa nada.
             System.out.println("  " + documento.getTitulo());
         }
     }
@@ -200,12 +182,12 @@ class SistemaDocumentos {
                 new ProxyVirtualDocumento("balanco-2020.tif"));
 
         SistemaDocumentos sistema = new SistemaDocumentos();
-        sistema.listar(acervo);   // nenhuma linha de "baixando" aparece: nada foi carregado
+        sistema.listar(acervo);   // nenhuma linha de "baixando": nada foi carregado
 
         System.out.println("\nabrindo um documento:");
-        acervo.get(0).exibir();   // agora sim o carregamento acontece
+        acervo.get(0).exibir();
         System.out.println("abrindo o mesmo de novo:");
-        acervo.get(0).exibir();   // já carregado, não baixa outra vez
+        acervo.get(0).exibir();
 
         System.out.println("\ncom proteção e auditoria empilhadas:");
         Documento sigiloso = new ProxyAuditoriaDocumento(
@@ -224,21 +206,15 @@ class SistemaDocumentos {
 
         System.out.println("\ncom cache compartilhado:");
         new ProxyCacheDocumento("manual.tif").exibir();
-        new ProxyCacheDocumento("manual.tif").exibir();   // instância nova de proxy, mesmo real
+        new ProxyCacheDocumento("manual.tif").exibir();
 
         System.out.println();
         ProxyAuditoriaDocumento.imprimirTrilha();
     }
 }
 
-//Os quatro tipos clássicos do GoF:
-//Virtual - adia a criação de um objeto caro (o exemplo acima).
-//De proteção - controla quem pode acessar.
-//Remoto - representa localmente um objeto que vive em outro processo ou máquina; foi a base de
-//  RMI, EJB remoto e ainda hoje dos stubs de gRPC.
-//Smart reference - executa tarefas extras no acesso: contagem de referências, carga de atributos
-//  sob demanda, travamento. É exatamente o que a JPA faz com relacionamentos LAZY, devolvendo um
-//  proxy no lugar da entidade até que algum getter seja chamado.
-//
-//Em Java, java.lang.reflect.Proxy permite criar proxies dinamicamente, sem escrever uma classe por
-//interface. É o mecanismo por trás dos interceptadores de Spring, CDI e EJB.
+//Os quatro tipos clássicos: virtual (adia criação cara), de proteção (controla acesso), remoto
+//(representa objeto em outro processo - base de RMI, EJB remoto e stubs de gRPC) e smart
+//reference (tarefas extras no acesso - é o que a JPA faz com relacionamentos LAZY).
+//java.lang.reflect.Proxy cria proxies dinamicamente e é o mecanismo por trás dos interceptadores
+//de Spring, CDI e EJB.

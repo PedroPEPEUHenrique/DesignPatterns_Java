@@ -1,14 +1,7 @@
-//GRASP - LOW COUPLING (Baixo Acoplamento)
-
+//GRASP - LOW COUPLING
 //Problema: como reduzir o impacto de uma mudança e favorecer o reúso?
-//Solução: atribua responsabilidades de forma que o ACOPLAMENTO - o quanto uma classe conhece,
-//depende de ou está ligada a outras - permaneça baixo.
-
-//Suponha que a sua tarefa seja emitir a nota fiscal de um pedido aprovado.
-//Imagine a solução em que o serviço de faturamento cria por dentro o cliente HTTP da SEFAZ,
-//instancia o gerador de PDF, abre a conexão com o banco e chama o servidor SMTP. Essa classe fica
-//impossível de testar sem rede e sem banco, não roda em outro contexto e quebra sempre que
-//qualquer um desses quatro detalhes mudar.
+//Solução: atribuir responsabilidades de forma que o ACOPLAMENTO - o quanto uma classe depende de
+//outras - permaneça baixo.
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,26 +31,21 @@ class Pedido {
 }
 
 // COMO NÃO FAZER - alto acoplamento
-// Esta classe depende de QUATRO implementações concretas, e ainda as CRIA por dentro.
-// Duas consequências práticas: não há como substituir nenhuma delas em teste, e a classe precisa
-// ser recompilada e reavaliada sempre que qualquer uma das quatro mudar.
+// Depende de QUATRO implementações concretas e ainda as CRIA por dentro: não há como substituí-las
+// em teste, e a classe precisa ser revista sempre que qualquer uma das quatro mudar.
 class FaturamentoAcoplado {
 
     public void faturar(Pedido pedido) {
-        // acoplamento 1: sabe qual cliente HTTP usar e como configurá-lo
         ClienteHttpSefaz sefaz = new ClienteHttpSefaz("https://sefaz.exemplo.gov.br", 3000);
         String chaveNfe = sefaz.transmitir(pedido.getCpfCliente(), pedido.getTotalEmCentavos());
 
-        // acoplamento 2: sabe qual biblioteca de PDF usar
         GeradorPdfItext pdf = new GeradorPdfItext();
         String arquivo = pdf.gerar(chaveNfe);
 
-        // acoplamento 3: sabe SQL e a estrutura da tabela
         BancoMySql banco = new BancoMySql();
         banco.executar("INSERT INTO nota_fiscal (pedido, chave) VALUES ('"
                        + pedido.getCodigo() + "','" + chaveNfe + "')");
 
-        // acoplamento 4: sabe do servidor de e-mail
         new ServidorSmtp("smtp.exemplo.com").enviar(pedido.getCpfCliente(), arquivo);
     }
 }
@@ -90,8 +78,7 @@ class ServidorSmtp {
     }
 }
 
-// COMO FAZER - baixo acoplamento
-// A classe passa a depender de ABSTRAÇÕES e a RECEBER as dependências, em vez de criá-las.
+// COMO FAZER - depender de ABSTRAÇÕES e RECEBER as dependências em vez de criá-las.
 
 interface TransmissorFiscal {
     String transmitir(String cpf, int valorEmCentavos);
@@ -109,9 +96,8 @@ interface Notificador {
     void notificar(String destinatario, String documento);
 }
 
-// Agora esta classe conhece apenas quatro interfaces - e nenhuma tecnologia. Ela não sabe se a
-// SEFAZ é HTTP ou fila, se o banco é MySQL ou memória, se a notificação é e-mail ou push.
-// Trocar qualquer uma dessas decisões não faz esta classe ser sequer recompilada.
+// Conhece quatro interfaces e nenhuma tecnologia. Trocar banco, gateway ou canal de notificação
+// não faz esta classe ser sequer recompilada.
 class Faturamento {
 
     private final TransmissorFiscal transmissor;
@@ -140,7 +126,6 @@ class Faturamento {
     }
 }
 
-// IMPLEMENTAÇÕES DE PRODUÇÃO
 class TransmissorSefaz implements TransmissorFiscal {
 
     @Override
@@ -175,9 +160,8 @@ class NotificadorEmail implements Notificador {
     }
 }
 
-// IMPLEMENTAÇÕES DE TESTE (dublês)
-// Só existem porque a classe depende de abstrações. Com o desenho acoplado, escrever este teste
-// exigiria rede, banco e servidor SMTP no ar.
+// Dublês de teste: só existem porque a classe depende de abstrações. Com o desenho acoplado, este
+// teste exigiria rede, banco e servidor SMTP no ar.
 class TransmissorFalso implements TransmissorFiscal {
 
     @Override
@@ -200,7 +184,6 @@ class RepositorioEmMemoria implements RepositorioNotaFiscal {
     }
 }
 
-// Classe Cliente
 class BaixoAcoplamento {
 
     public static void main(String[] args) {
@@ -225,14 +208,9 @@ class BaixoAcoplamento {
     }
 }
 
-//Formas de acoplamento que contam:
-//A tem um atributo do tipo B; A chama um método de B; A recebe ou devolve B; A herda de B.
-//A herança é a forma MAIS forte de acoplamento - a subclasse depende até de detalhes protegidos
-//da superclasse. É a razão do conselho "prefira composição a herança".
-//
-//Acoplamento não é para ser eliminado, e sim controlado. Zero acoplamento significa objetos que
-//não colaboram, ou seja, nenhum sistema. Depender de classes estáveis (String, List, interfaces
-//do próprio domínio) é barato; depender de classes voláteis e concretas é o que custa caro.
-//
-//Este é um princípio AVALIATIVO: não existe métrica que diga "acoplado demais". Ele é usado para
-//comparar dois desenhos possíveis e escolher o de menor dependência.
+//Formas de acoplamento: A tem atributo do tipo B, chama método de B, recebe ou devolve B, ou herda
+//de B. A herança é a MAIS forte - a subclasse depende até de detalhes protegidos da superclasse, e
+//é a razão do "prefira composição a herança".
+//Acoplamento não se elimina, se controla: zero acoplamento é nenhum sistema. Depender de classes
+//estáveis é barato; de classes voláteis e concretas é o que custa caro.
+//É um princípio AVALIATIVO - serve para comparar dois desenhos, não há métrica de "acoplado demais".

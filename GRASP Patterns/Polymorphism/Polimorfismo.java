@@ -1,21 +1,13 @@
-//GRASP - POLYMORPHISM (Polimorfismo)
-
-//Problema: como tratar alternativas que variam conforme o TIPO? Como criar componentes de software
-//plugáveis?
-//Solução: quando o comportamento varia por tipo, atribua a responsabilidade - usando operações
-//polimórficas - às classes para as quais o comportamento varia. NÃO teste o tipo com condicionais.
-
-//Suponha que a sua tarefa seja calcular o imposto de itens de uma nota. A alíquota depende da
-//categoria: medicamento, alimento, eletrônico, serviço.
-//Imagine a solução com um switch sobre a categoria. Toda categoria nova reabre esse método - e
-//normalmente ele não está sozinho: o mesmo switch reaparece no cálculo de desconto, na regra de
-//devolução e na emissão do documento. Um esquecimento em qualquer um deles é um bug silencioso.
+//GRASP - POLYMORPHISM
+//Problema: como tratar alternativas que variam conforme o TIPO?
+//Solução: atribuir a responsabilidade, com operações polimórficas, às classes para as quais o
+//comportamento varia. NÃO testar o tipo com condicionais - o mesmo switch acaba reaparecendo no
+//cálculo de desconto, na regra de devolução e na emissão do documento.
 
 import java.util.ArrayList;
 import java.util.List;
 
 // COMO NÃO FAZER - condicional por tipo
-// O sinal de alerta é o switch/if-else sobre um "tipo" representado como String ou enum.
 class CalculadoraImpostoComSwitch {
 
     public int calcular(String categoria, int valorEmCentavos) {
@@ -29,13 +21,12 @@ class CalculadoraImpostoComSwitch {
             case "SERVICO":
                 return (int) (valorEmCentavos * 0.05);
             default:
-                // Este default é o problema: uma categoria nova cai aqui silenciosamente e o
-                // sistema fatura errado, sem erro de compilação e sem exceção.
+                // Uma categoria nova cai aqui silenciosamente e o sistema fatura errado, sem erro
+                // de compilação e sem exceção.
                 return (int) (valorEmCentavos * 0.18);
         }
     }
 
-    // E o mesmo switch se repete a cada nova regra que dependa da categoria.
     public boolean permiteDevolucao(String categoria) {
         switch (categoria) {
             case "MEDICAMENTO":
@@ -48,8 +39,7 @@ class CalculadoraImpostoComSwitch {
     }
 }
 
-// COMO FAZER - polimorfismo
-// Cada variação vira um TIPO, e cada tipo responde por si. O condicional some.
+// COMO FAZER - cada variação vira um TIPO, e cada tipo responde por si.
 
 interface ItemTributavel {
 
@@ -61,7 +51,6 @@ interface ItemTributavel {
 
     String descricao();
 
-    // Comportamento comum pode ficar num default, evitando repetição entre as implementações.
     default int totalComImpostoEmCentavos() {
         return valorEmCentavos() + impostoEmCentavos();
     }
@@ -104,7 +93,7 @@ class Medicamento extends ItemBase {
 
     @Override
     public int impostoEmCentavos() {
-        return 0;   // isento
+        return 0;
     }
 
     @Override
@@ -112,8 +101,8 @@ class Medicamento extends ItemBase {
         return false;
     }
 
-    // Um dado específico deste tipo fica DENTRO deste tipo. Com o switch, "tarjaPreta" teria que
-    // virar mais um campo genérico na classe única de item, nulo para todas as outras categorias.
+    // Um dado específico deste tipo fica DENTRO dele. Com o switch, "tarjaPreta" viraria mais um
+    // campo genérico na classe única, nulo para todas as outras categorias.
     @Override
     public String descricao() {
         return super.descricao() + (tarjaPreta ? " (tarja preta)" : "");
@@ -169,9 +158,8 @@ class Servico extends ItemBase {
     }
 }
 
-// TIPO NOVO - acrescentado sem alterar nenhuma linha das classes existentes nem da nota fiscal.
-// É esse o teste prático do princípio: se a regra nova obrigou a mexer em código antigo, não era
-// polimorfismo, era condicional disfarçada.
+// Tipo NOVO, sem alterar nenhuma classe existente nem a nota fiscal. Se a regra nova obrigou a
+// mexer em código antigo, não era polimorfismo, era condicional disfarçada.
 class LivroDidatico extends ItemBase {
 
     LivroDidatico(String nome, int valorEmCentavos) {
@@ -180,12 +168,11 @@ class LivroDidatico extends ItemBase {
 
     @Override
     public int impostoEmCentavos() {
-        return 0;   // imunidade constitucional
+        return 0;
     }
 }
 
-// O CLIENTE do polimorfismo
-// Nenhum switch, nenhum instanceof, nenhum cast. Ele só conhece a abstração.
+// Cliente: nenhum switch, nenhum instanceof, nenhum cast.
 class NotaFiscal {
 
     private final List<ItemTributavel> itens = new ArrayList<>();
@@ -220,7 +207,6 @@ class NotaFiscal {
     }
 }
 
-// Classe Cliente
 class Polimorfismo {
 
     public static void main(String[] args) {
@@ -235,7 +221,7 @@ class Polimorfismo {
         nota.adicionar(new Alimento("Arroz 5kg", 3200));
         nota.adicionar(new Eletronico("Fone bluetooth", 25000, 12));
         nota.adicionar(new Servico("Instalação", 12000));
-        nota.adicionar(new LivroDidatico("Padrões de Projeto", 18000));   // tipo novo, zero mudança
+        nota.adicionar(new LivroDidatico("Padrões de Projeto", 18000));
 
         nota.imprimir();
         System.out.println("imposto total: " + nota.impostoTotalEmCentavos());
@@ -243,14 +229,10 @@ class Polimorfismo {
     }
 }
 
-//Como reconhecer o problema no código: procure por switch/if-else sobre um campo "tipo",
-//"categoria" ou "status", especialmente quando o MESMO encadeamento aparece em mais de um método.
-//A refatoração correspondente chama-se "Replace Conditional with Polymorphism".
-//
-//Quando o condicional é aceitável: quando a variação é sobre um VALOR e não sobre um tipo (faixas
-//de valor, por exemplo), quando existe um único ponto de decisão e ele é estável, e nos pontos de
-//fronteira - alguém precisa converter a String vinda do banco ou do JSON no objeto certo. O objetivo
-//é ter esse "if" em UM lugar só (tipicamente uma fábrica), e não espalhado pelo sistema.
-//
-//Este princípio é a base do padrão Strategy, do State e do Command, e é a leitura GRASP do
-//Open/Closed Principle: aberto para extensão, fechado para modificação.
+//Como reconhecer o problema: switch/if-else sobre um campo "tipo", "categoria" ou "status",
+//especialmente quando o MESMO encadeamento aparece em mais de um método. A refatoração chama-se
+//"Replace Conditional with Polymorphism".
+//O condicional é aceitável quando a variação é sobre um VALOR (faixas), e nos pontos de fronteira -
+//alguém precisa converter a String do banco no objeto certo. O objetivo é ter esse if em UM lugar
+//só, tipicamente uma fábrica.
+//É a base do Strategy, do State e do Command, e a leitura GRASP do Open/Closed Principle.

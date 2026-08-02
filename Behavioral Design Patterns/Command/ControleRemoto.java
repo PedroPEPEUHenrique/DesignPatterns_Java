@@ -1,26 +1,15 @@
-//Suponha que a sua tarefa seja implementar o controle remoto de uma automação residencial. O
-//controle tem botões configuráveis e cada botão pode acionar qualquer aparelho:
-//Ligar/desligar a luz
-//Abrir/fechar a persiana
-//Ajustar o volume do som
-
-//Imagine o controle com um switch sobre o botão pressionado, chamando o método certo de cada
-//aparelho. O controle passaria a depender de TODOS os aparelhos, e permitir que o usuário
-//reconfigure um botão em tempo de execução ficaria impossível. Some o requisito de DESFAZER a
-//última ação e o switch vira inviável.
-
-//O Command resolve o problema de encapsular uma requisição como um OBJETO, permitindo
-//parametrizar clientes com diferentes requisições, enfileirá-las, registrá-las em log e - por
-//serem objetos - desfazê-las.
+//Implementar um controle remoto com botões configuráveis, capaz de acionar qualquer aparelho e de
+//DESFAZER a última ação. Com um switch sobre o botão, o controle dependeria de todos os aparelhos
+//e reconfigurar um botão em tempo de execução seria impossível.
+//O Command encapsula uma requisição como um OBJETO, o que permite parametrizar clientes com
+//requisições, enfileirá-las, registrá-las em log e desfazê-las.
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 
-// Padrão Command - a interface Command
-// Uma requisição vira um objeto com uma operação sem parâmetros. Tudo de que ela precisa foi
-// guardado no seu estado quando ela foi criada.
+// Command
 interface Comando {
     void executar();
 
@@ -29,8 +18,7 @@ interface Comando {
     String descricao();
 }
 
-// RECEIVERS - os aparelhos. Repare que eles não sabem que existem comandos: continuam sendo
-// classes de domínio comuns. O padrão não os contamina.
+// Receivers: continuam classes de domínio comuns, não sabem que existem comandos.
 
 class Luz {
     private final String comodo;
@@ -81,9 +69,8 @@ class Som {
     }
 }
 
-// Padrão Command - ConcreteCommand
-// Guarda o RECEIVER e os argumentos. Para desfazer, guarda também o estado anterior - é o
-// comando que sabe reverter a si mesmo, e não o aparelho.
+// ConcreteCommand
+// Guarda o receiver, os argumentos e o estado anterior: é o comando que sabe reverter a si mesmo.
 class ComandoLigarLuz implements Comando {
     private final Luz luz;
     private boolean estadoAnterior;
@@ -196,8 +183,7 @@ class ComandoAjustarVolume implements Comando {
     }
 }
 
-// MacroComando - um comando composto por outros. Como ele também implementa Comando, o invoker
-// não distingue um comando simples de uma cena inteira: é um Composite de comandos.
+// MacroComando: também implementa Comando, então o invoker não distingue um comando de uma cena.
 class Cena implements Comando {
     private final String nome;
     private final List<Comando> passos = new ArrayList<>();
@@ -221,7 +207,7 @@ class Cena implements Comando {
 
     @Override
     public void desfazer() {
-        // Desfazer é na ORDEM INVERSA. Esquecer isso é o erro mais comum em macro comandos.
+        // Ordem INVERSA: esquecer isso é o erro mais comum em macro comandos.
         for (int i = passos.size() - 1; i >= 0; i--) {
             passos.get(i).desfazer();
         }
@@ -233,7 +219,7 @@ class Cena implements Comando {
     }
 }
 
-// Comando nulo (Null Object): evita o if (comando != null) espalhado pelo invoker.
+// Null Object: evita o if (comando != null) espalhado pelo invoker.
 class ComandoVazio implements Comando {
 
     @Override
@@ -251,9 +237,7 @@ class ComandoVazio implements Comando {
     }
 }
 
-// Padrão Command - o Invoker
-// Sabe DISPARAR comandos e guardar o histórico. Não sabe o que cada comando faz, nem quais
-// aparelhos existem. Um aparelho novo não muda uma linha desta classe.
+// Invoker: sabe disparar comandos e guardar o histórico, sem saber o que cada um faz.
 class ControleRemoto {
 
     private final Comando[] botoes = new Comando[6];
@@ -265,7 +249,6 @@ class ControleRemoto {
         }
     }
 
-    // É aqui que o botão é PARAMETRIZADO com uma requisição - em tempo de execução.
     public void configurar(int botao, Comando comando) {
         botoes[botao] = comando;
     }
@@ -307,19 +290,16 @@ class ControleRemoto {
         controle.pressionar(2);
         controle.pressionar(3);
         controle.pressionar(4);
-        controle.pressionar(5);   // botão não configurado
+        controle.pressionar(5);
 
         System.out.println("--- desfazendo ---");
-        controle.desfazerUltimo();   // botão vazio
-        controle.desfazerUltimo();   // a cena inteira, na ordem inversa
+        controle.desfazerUltimo();
+        controle.desfazerUltimo();
         controle.desfazerUltimo();
     }
 }
 
-//O que o Command habilita, e que um método direto não habilita:
-//Desfazer/refazer, porque a operação virou um objeto com estado.
-//Fila e agendamento: comandos podem ser enfileirados, executados em outra thread ou mais tarde.
-//Log e replay: gravando os comandos, o sistema pode reconstruir seu estado reexecutando-os -
-//  é a base de event sourcing e do log de transações de um banco de dados.
-//Em Java, Runnable é a interface Command da biblioteca padrão, e é por isso que um ExecutorService
+//O que o Command habilita e um método direto não: desfazer/refazer, fila e agendamento, log e
+//replay (base de event sourcing e do log de transações de um banco).
+//Em Java, Runnable é a interface Command da biblioteca padrão - por isso um ExecutorService
 //aceita qualquer tarefa sem saber o que ela faz.

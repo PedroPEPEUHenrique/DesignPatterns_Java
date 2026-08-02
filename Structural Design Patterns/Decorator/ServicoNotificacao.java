@@ -1,26 +1,14 @@
-//Suponha que a sua tarefa seja acrescentar recursos ao envio de notificações do sistema. O envio
-//básico já existe e a abstração é Notificador, com a operação:
-//enviar(destinatario, mensagem)
+//Acrescentar log, limite de envio, retentativa e criptografia ao envio de notificações. Por
+//herança seria uma classe por COMBINAÇÃO, e a combinação é escolhida em tempo de execução - o que
+//a herança nem permite.
+//O Decorator acrescenta responsabilidades a um objeto DINAMICAMENTE, mantendo a mesma interface.
 
-//Imagine que agora se pede: registrar em log todo envio, limitar a taxa de envios, tentar de novo
-//em caso de falha e criptografar a mensagem. Por herança seriam NotificadorComLog,
-//NotificadorComLogERetentativa, NotificadorComLogRetentativaELimite... uma classe por COMBINAÇÃO,
-//e a combinação é escolhida em tempo de execução, o que a herança nem permite.
-
-//O Decorator resolve o problema de acrescentar responsabilidades a um objeto DINAMICAMENTE,
-//mantendo a mesma interface - o que o torna uma alternativa flexível à herança para estender
-//comportamento.
-
-import java.util.ArrayList;
-import java.util.List;
-
-// Padrão Decorator - o Component
+// Component
 interface Notificador {
     void enviar(String destinatario, String mensagem);
 }
 
-// Padrão Decorator - o ConcreteComponent
-// O objeto "de verdade", que faz o trabalho real. É o único que não delega para ninguém.
+// ConcreteComponent: o único que faz o trabalho real e não delega para ninguém.
 class NotificadorEmail implements Notificador {
 
     @Override
@@ -37,10 +25,9 @@ class NotificadorSms implements Notificador {
     }
 }
 
-// Padrão Decorator - o Decorator abstrato
-// Ele IMPLEMENTA a interface (para poder substituir o componente) e ao mesmo tempo CONTÉM um
-// componente (para poder delegar). Essa dupla natureza é o coração do padrão e é o que permite
-// empilhar decoradores indefinidamente.
+// Decorator abstrato
+// IMPLEMENTA a interface (para poder substituir o componente) e CONTÉM um componente (para poder
+// delegar). Essa dupla natureza é o que permite empilhar decoradores indefinidamente.
 abstract class NotificadorDecorator implements Notificador {
 
     protected final Notificador delegado;
@@ -49,14 +36,13 @@ abstract class NotificadorDecorator implements Notificador {
         this.delegado = delegado;
     }
 
-    // Comportamento padrão: repassar sem alterar nada. As subclasses sobrescrevem e chamam super.
     @Override
     public void enviar(String destinatario, String mensagem) {
         delegado.enviar(destinatario, mensagem);
     }
 }
 
-// Decorador 1 - acrescenta comportamento ANTES e DEPOIS da chamada real.
+// Acrescenta comportamento antes e depois da chamada real.
 class NotificadorComLog extends NotificadorDecorator {
 
     NotificadorComLog(Notificador delegado) {
@@ -74,7 +60,7 @@ class NotificadorComLog extends NotificadorDecorator {
     }
 }
 
-// Decorador 2 - TRANSFORMA o argumento antes de repassar.
+// Transforma o argumento antes de repassar.
 class NotificadorCriptografado extends NotificadorDecorator {
 
     NotificadorCriptografado(Notificador delegado) {
@@ -86,7 +72,6 @@ class NotificadorCriptografado extends NotificadorDecorator {
         super.enviar(destinatario, cifrar(mensagem));
     }
 
-    // Cifra de César, só para o exemplo. Não é criptografia de verdade.
     private String cifrar(String texto) {
         StringBuilder cifrado = new StringBuilder();
         for (char c : texto.toCharArray()) {
@@ -96,7 +81,7 @@ class NotificadorCriptografado extends NotificadorDecorator {
     }
 }
 
-// Decorador 3 - controla SE a chamada acontece.
+// Controla SE a chamada acontece.
 class NotificadorComLimite extends NotificadorDecorator {
     private final int limite;
     private int enviados;
@@ -117,7 +102,7 @@ class NotificadorComLimite extends NotificadorDecorator {
     }
 }
 
-// Decorador 4 - controla QUANTAS VEZES a chamada acontece.
+// Controla QUANTAS VEZES a chamada acontece.
 class NotificadorComRetentativa extends NotificadorDecorator {
     private final int tentativas;
 
@@ -142,7 +127,6 @@ class NotificadorComRetentativa extends NotificadorDecorator {
     }
 }
 
-// Componente instável, só para exercitar a retentativa.
 class NotificadorInstavel implements Notificador {
     private int chamadas;
 
@@ -156,12 +140,10 @@ class NotificadorInstavel implements Notificador {
     }
 }
 
-// Classe Cliente
+// Cliente
 class ServicoNotificacao {
     private final Notificador notificador;
 
-    // O cliente recebe um Notificador e não distingue um componente puro de uma pilha de 4
-    // decoradores. Para ele, todos têm exatamente a mesma interface.
     public ServicoNotificacao(Notificador notificador) {
         this.notificador = notificador;
     }
@@ -171,8 +153,8 @@ class ServicoNotificacao {
     }
 
     public static void main(String[] args) {
-        // A montagem é lida DE FORA PARA DENTRO: log envolve limite, que envolve criptografia,
-        // que envolve o email. A ordem importa - inverter log e criptografia muda o que é logado.
+        // Lê-se DE FORA PARA DENTRO. A ordem importa: inverter log e criptografia muda o que é
+        // registrado no log.
         Notificador email = new NotificadorComLog(
                                 new NotificadorComLimite(
                                     new NotificadorCriptografado(
@@ -181,27 +163,24 @@ class ServicoNotificacao {
         ServicoNotificacao servico = new ServicoNotificacao(email);
         servico.avisar("ana@exemplo.com", "pedido aprovado");
         servico.avisar("bruno@exemplo.com", "pedido aprovado");
-        servico.avisar("carla@exemplo.com", "pedido aprovado");   // barrado pela cota
+        servico.avisar("carla@exemplo.com", "pedido aprovado");
 
         System.out.println("---");
 
-        // Outra combinação, escolhida em tempo de execução, sem nenhuma classe nova.
         new ServicoNotificacao(new NotificadorComRetentativa(new NotificadorInstavel(), 5))
                 .avisar("diego@exemplo.com", "código de acesso");
 
         System.out.println("---");
 
-        // O SMS aproveita os mesmos decoradores: eles não conhecem nenhum componente concreto.
         new ServicoNotificacao(new NotificadorComLog(new NotificadorSms()))
                 .avisar("+5511999990000", "seu pedido saiu para entrega");
 
-        // As classes de java.io são o exemplo canônico de Decorator na biblioteca padrão:
+        // java.io é o exemplo canônico na biblioteca padrão:
         // new BufferedReader(new InputStreamReader(new FileInputStream(arquivo)))
     }
 }
 
-//Decorator x Proxy: os dois embrulham um objeto mantendo a interface. O Decorator ACRESCENTA
-//comportamento e é montado pelo cliente, que escolhe a pilha; o Proxy CONTROLA o acesso e
-//normalmente gerencia o ciclo de vida do objeto real, escondendo-o do cliente.
-//Decorator x Chain of Responsibility: a estrutura de delegação é parecida, mas no Decorator todos
-//os elos participam do resultado, enquanto na corrente um elo trata e interrompe a passagem.
+//Decorator x Proxy: o Decorator ACRESCENTA comportamento e é montado pelo cliente; o Proxy
+//CONTROLA o acesso e normalmente esconde o objeto real do cliente.
+//Decorator x Chain of Responsibility: no Decorator todos os elos participam do resultado; na
+//corrente, um elo trata e interrompe a passagem.

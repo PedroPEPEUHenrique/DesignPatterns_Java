@@ -1,23 +1,13 @@
-//Suponha que a sua tarefa seja gerar relatórios do sistema. Existem tipos de relatório:
-//Relatório de vendas
-//Relatório de estoque
-//E existem formatos de saída:
-//PDF, HTML, CSV
-
-//Imagine a solução por herança: RelatorioVendasPdf, RelatorioVendasHtml, RelatorioVendasCsv,
-//RelatorioEstoquePdf, RelatorioEstoqueHtml, RelatorioEstoqueCsv. São 2 x 3 = 6 classes, e um
-//quarto formato passaria para 8. A hierarquia cresce pelo PRODUTO das duas dimensões - é a
+//Gerar relatórios que variam em duas dimensões: o tipo (vendas, estoque) e o formato de saída
+//(HTML, CSV, texto). Por herança seriam 2 x 3 classes, e um formato novo passaria para 2 x 4 -
 //explosão combinatória de subclasses.
-
-//O Bridge resolve o problema de desacoplar uma abstração da sua implementação, para que as duas
-//variem de forma INDEPENDENTE. Em vez de multiplicar (2 x 3), passamos a somar (2 + 3).
+//O Bridge desacopla uma abstração da sua implementação para que as duas variem de forma
+//INDEPENDENTE: em vez de multiplicar (2 x 3), passa-se a somar (2 + 3).
 
 import java.util.ArrayList;
 import java.util.List;
 
-// Padrão Bridge - o lado da IMPLEMENTAÇÃO (Implementor)
-// Note que não é a interface do cliente: é um vocabulário primitivo de desenho, pensado para ser
-// implementado, não para ser chamado por quem pede um relatório.
+// Implementor: vocabulário primitivo de desenho, pensado para ser implementado.
 interface RenderizadorRelatorio {
     void iniciarDocumento(String titulo);
 
@@ -114,9 +104,8 @@ class RenderizadorTextoPlano implements RenderizadorRelatorio {
     }
 }
 
-// Padrão Bridge - o lado da ABSTRAÇÃO
-// A PONTE é este campo: a abstração COMPÕE um renderizador em vez de herdar dele. É por aqui que
-// as duas hierarquias se conectam, e é o que permite trocar o formato em tempo de execução.
+// Abstração
+// A PONTE é este campo: a abstração COMPÕE um renderizador em vez de herdar dele.
 abstract class Relatorio {
     protected final RenderizadorRelatorio renderizador;
 
@@ -124,7 +113,6 @@ abstract class Relatorio {
         this.renderizador = renderizador;
     }
 
-    // Operação de alto nível, escrita uma única vez em termos das primitivas do renderizador.
     public String gerar() {
         renderizador.iniciarDocumento(titulo());
         renderizador.escreverCabecalho(colunas());
@@ -141,7 +129,7 @@ abstract class Relatorio {
     protected abstract List<List<String>> linhas();
 }
 
-// Abstração refinada 1
+// Abstrações refinadas
 class RelatorioVendas extends Relatorio {
 
     RelatorioVendas(RenderizadorRelatorio renderizador) {
@@ -167,7 +155,6 @@ class RelatorioVendas extends Relatorio {
     }
 }
 
-// Abstração refinada 2
 class RelatorioEstoque extends Relatorio {
 
     RelatorioEstoque(RenderizadorRelatorio renderizador) {
@@ -193,21 +180,17 @@ class RelatorioEstoque extends Relatorio {
     }
 }
 
-// Classe Cliente
+// Cliente
 class AplicacaoRelatorios {
 
     public static void main(String[] args) {
         // Qualquer relatório combina com qualquer formato, sem nenhuma classe nova.
-        // Um formato novo é 1 classe; um relatório novo é 1 classe. Nunca 1 por combinação.
         System.out.println(new RelatorioVendas(new RenderizadorHtml()).gerar());
         System.out.println(new RelatorioVendas(new RenderizadorCsv()).gerar());
         System.out.println(new RelatorioEstoque(new RenderizadorTextoPlano()).gerar());
     }
 }
 
-//Bridge x Strategy: estruturalmente são iguais - um objeto delega a outro por composição. A
-//diferença é de INTENÇÃO e de escala. O Strategy troca um algoritmo dentro de uma classe; o Bridge
-//separa duas HIERARQUIAS inteiras que evoluem em ritmos diferentes, e essa separação é decidida
-//no início do projeto, não como refatoração pontual.
-//Bridge x Abstract Factory: os dois costumam aparecer juntos - uma fábrica abstrata é um bom lugar
-//para escolher qual implementação concreta será ligada à abstração.
+//Bridge x Strategy: estruturalmente iguais. O Strategy troca um algoritmo dentro de uma classe; o
+//Bridge separa duas HIERARQUIAS inteiras que evoluem em ritmos diferentes, decisão tomada no
+//início do projeto e não como refatoração pontual.

@@ -1,32 +1,20 @@
-//Suponha que a sua tarefa seja implementar a tela de cadastro de um pedido. Ela tem:
-//Um campo de cliente
-//Uma lista de itens
-//Uma caixa "aplicar cupom"
-//Um botão "finalizar"
-
-//Imagine as regras de interação: escolher o cliente habilita a lista de itens; a lista vazia
-//desabilita o botão; o cupom só aparece para cliente VIP. Se cada componente chamar diretamente os
-//outros, todos passam a se conhecer - são n x n ligações. Nenhum componente pode ser reaproveitado
-//em outra tela, porque cada um carrega junto o conhecimento dos demais.
-
-//O Mediator resolve o problema de definir um objeto que ENCAPSULA como um conjunto de objetos
-//interage. Os componentes deixam de se referenciar entre si e passam a falar só com o mediador,
-//trocando um grafo de ligações por uma estrela.
+//Numa tela de cadastro de pedido, escolher o cliente habilita a lista de itens, a lista vazia
+//desabilita o botão e o cupom só aparece para cliente VIP. Se cada componente chamar os outros
+//diretamente, são n x n ligações e nenhum componente é reaproveitável em outra tela.
+//O Mediator encapsula em um objeto como um conjunto de objetos interage, trocando um grafo de
+//ligações por uma estrela.
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-// Padrão Mediator - a interface do mediador
-// A operação é genérica de propósito: "componente X sofreu o evento Y". Quem decide o que isso
-// significa é o mediador concreto, não o componente.
+// Mediator: a operação é genérica de propósito - "componente X sofreu o evento Y".
 interface MediadorTela {
     void notificar(Componente origem, String evento);
 }
 
-// Padrão Mediator - o Colleague
-// Conhece SÓ o mediador. Não tem nenhuma referência aos outros componentes - esse é o ponto.
+// Colleague: conhece SÓ o mediador, nenhuma referência aos outros componentes.
 abstract class Componente {
 
     protected MediadorTela mediador;
@@ -69,8 +57,7 @@ class CampoCliente extends Componente {
         this.vip = vip;
         System.out.println("usuário selecionou o cliente " + cliente + (vip ? " (VIP)" : ""));
 
-        // O componente só anuncia o que aconteceu com ele. Não sabe quem se importa nem o que
-        // deve mudar na tela por causa disso.
+        // Só anuncia o que aconteceu; não sabe quem se importa nem o que muda na tela.
         mediador.notificar(this, "clienteSelecionado");
     }
 
@@ -145,9 +132,7 @@ class BotaoFinalizar extends Componente {
     }
 }
 
-// Padrão Mediator - o ConcreteMediator
-// TODA a lógica de interação da tela mora aqui, em um lugar só e legível de cima a baixo.
-// Antes ela estava espalhada em cada componente, na forma de chamadas cruzadas.
+// ConcreteMediator: TODA a lógica de interação da tela, num lugar só e legível de cima a baixo.
 class MediadorTelaPedido implements MediadorTela {
 
     private final CampoCliente campoCliente;
@@ -162,7 +147,6 @@ class MediadorTelaPedido implements MediadorTela {
         this.caixaCupom = caixaCupom;
         this.botaoFinalizar = botaoFinalizar;
 
-        // O mediador se registra em cada componente: é a única ligação que existe.
         for (Componente componente : List.of(campoCliente, listaItens, caixaCupom, botaoFinalizar)) {
             componente.setMediador(this);
         }
@@ -200,8 +184,8 @@ class MediadorTelaPedido implements MediadorTela {
     }
 }
 
-// Um segundo mediador concreto: MESMOS componentes, política de tela diferente. Isso só é
-// possível porque a regra de interação não está dentro dos componentes.
+// MESMOS componentes, política de tela diferente - só é possível porque a regra de interação não
+// está dentro deles.
 class MediadorTelaSimplificada implements MediadorTela {
 
     private final Map<String, Componente> componentes = new HashMap<>();
@@ -210,7 +194,7 @@ class MediadorTelaSimplificada implements MediadorTela {
         for (Componente componente : todos) {
             componente.setMediador(this);
             componentes.put(componente.getNome(), componente);
-            componente.setHabilitado(true);   // nesta tela nada fica bloqueado
+            componente.setHabilitado(true);
         }
     }
 
@@ -221,7 +205,7 @@ class MediadorTelaSimplificada implements MediadorTela {
     }
 }
 
-// Classe Cliente
+// Cliente
 class TelaCadastroPedido {
 
     public static void main(String[] args) {
@@ -233,11 +217,11 @@ class TelaCadastroPedido {
         new MediadorTelaPedido(campoCliente, listaItens, caixaCupom, botaoFinalizar);
 
         System.out.println("--- interação do usuário ---");
-        listaItens.adicionar("Teclado");          // bloqueado: nenhum cliente escolhido ainda
-        botaoFinalizar.clicar();                  // bloqueado pelo mesmo motivo
+        listaItens.adicionar("Teclado");
+        botaoFinalizar.clicar();
 
-        campoCliente.selecionar("Ana", true);     // habilita a lista e revela o cupom
-        listaItens.adicionar("Teclado");          // habilita o botão
+        campoCliente.selecionar("Ana", true);
+        listaItens.adicionar("Teclado");
         listaItens.adicionar("Mouse");
         botaoFinalizar.clicar();
 
@@ -246,12 +230,7 @@ class TelaCadastroPedido {
     }
 }
 
-//Mediator x Observer: os dois reduzem acoplamento entre objetos, mas de formas diferentes. No
-//Observer a comunicação é unidirecional e o emissor não sabe quem escuta - bom para notificação
-//em difusão. No Mediator a comunicação é centralizada e o mediador CONHECE todos os colegas -
-//bom quando existe uma lógica de coordenação com regras entre eles. É comum implementar o
+//Mediator x Observer: no Observer a comunicação é unidirecional e o emissor não sabe quem escuta;
+//no Mediator ela é centralizada e o mediador CONHECE todos os colegas. É comum implementar o
 //mediador usando Observer por baixo.
-//
-//O risco do padrão: o mediador tende a crescer. Se ele vira o único lugar com lógica do sistema,
-//virou um God Object - a coordenação foi centralizada, mas a complexidade não diminuiu.
-//No GRASP, essa mesma ideia aparece como Indirection e Low Coupling.
+//Risco: o mediador tende a crescer. Se vira o único lugar com lógica, virou um God Object.

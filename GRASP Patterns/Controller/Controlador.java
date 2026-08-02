@@ -1,21 +1,12 @@
-//GRASP - CONTROLLER (Controlador)
-
-//Problema: qual é o primeiro objeto, além da camada de interface, que recebe e coordena uma
-//operação do sistema?
-//Solução: atribua a responsabilidade a uma classe que represente
-//o SISTEMA como um todo (um "controlador de fachada"), ou
-//um CASO DE USO específico (um "controlador de sessão", como RegistrarVendaHandler).
-
-//Suponha que a sua tarefa seja registrar uma venda a partir da tela do caixa. A tela precisa:
-//abrir a venda, acrescentar itens, aplicar desconto de fidelidade, encerrar e cobrar.
-//Imagine a lógica dessas etapas escrita nos eventos de clique da tela. A regra de negócio fica
-//presa à interface: não dá para reaproveitá-la na API REST, não dá para testá-la sem a tela, e
-//trocar a interface significa reescrever a regra.
+//GRASP - CONTROLLER
+//Problema: qual é o primeiro objeto, além da interface, que recebe e coordena uma operação do
+//sistema?
+//Solução: uma classe que represente o SISTEMA como um todo (controlador de fachada) ou um CASO DE
+//USO específico (controlador de sessão). Sem isso, a regra fica presa aos eventos de clique da
+//tela e não dá para reaproveitá-la na API nem testá-la sem interface.
 
 import java.util.ArrayList;
 import java.util.List;
-
-// DOMÍNIO - as classes que efetivamente sabem das regras.
 
 class Produto {
     private final String sku;
@@ -131,11 +122,9 @@ class ServicoPagamento {
 }
 
 // O CONTROLADOR (de caso de uso)
-// Recebe os EVENTOS DE SISTEMA vindos da interface e os coordena. Repare no que ele NÃO faz:
-//  não calcula total (quem sabe é a Venda),
-//  não decide desconto (quem sabe é o ProgramaFidelidade),
-//  não sabe buscar produto (quem sabe é o Catálogo).
-// Ele apenas delega, na ordem certa. Um controlador que calcula vira um God Object.
+// Ele não calcula total (quem sabe é a Venda), não decide desconto (é o ProgramaFidelidade) e não
+// busca produto (é o Catálogo). Apenas delega, na ordem certa - um controlador que calcula vira
+// um God Object.
 class RegistrarVendaController {
 
     private final CatalogoProdutos catalogo;
@@ -178,8 +167,8 @@ class RegistrarVendaController {
         return pagamento.cobrar(vendaAtual.totalEmCentavos(), meio);
     }
 
-    // O controlador devolve dados prontos para exibição, e NÃO o objeto de domínio. Assim a tela
-    // não passa a depender do modelo - se Venda mudar, a tela não quebra.
+    // Devolve dados prontos para exibição, e NÃO o objeto de domínio: se Venda mudar, a tela não
+    // quebra.
     public String resumoParaTela() {
         StringBuilder resumo = new StringBuilder();
         for (LinhaVenda linha : vendaAtual.getLinhas()) {
@@ -198,8 +187,8 @@ class RegistrarVendaController {
     }
 }
 
-// INTERFACES - duas camadas de apresentação completamente diferentes usando o MESMO controlador.
-// É essa reutilização que prova que a regra não vazou para a interface.
+// Duas camadas de apresentação diferentes usando o MESMO controlador: é isso que prova que a regra
+// não vazou para a interface.
 
 class TelaCaixa {
 
@@ -232,13 +221,12 @@ class ApiVendas {
         System.out.println("== API REST ==");
         controller.iniciarNovaVenda();
         controller.informarItem("MON-003", 1);
-        controller.encerrarVenda("");   // sem CPF: sem desconto
+        controller.encerrarVenda("");
         System.out.println(controller.resumoParaTela());
         System.out.println("  comprovante: " + controller.efetuarPagamento("pix"));
     }
 }
 
-// Classe Cliente
 class Controlador {
 
     public static void main(String[] args) {
@@ -256,15 +244,8 @@ class Controlador {
     }
 }
 
-//Controlador de FACHADA x controlador de CASO DE USO:
-//Fachada - uma classe só para o sistema inteiro. Serve quando há poucos eventos de sistema.
-//Caso de uso - uma classe por caso de uso. É o certo quando o sistema é grande; evita que a
-//  fachada vire um God Object com dezenas de métodos sem relação entre si.
-//
-//Sintomas de um controlador inchado ("bloated controller"): existe um único controlador para tudo;
-//ele tem estado que deveria estar no domínio; ele não delega, ele calcula. A cura é dividir por
-//caso de uso e devolver as regras às classes especialistas.
-//
-//Na prática: é o C do MVC, o @Controller/@RestController do Spring, o recurso JAX-RS de um
-//endpoint. E é o mesmo papel da Facade do GoF, com a diferença de que aqui a intenção é ser o
-//ponto de entrada da CAMADA DE DOMÍNIO, e não simplificar um subsistema qualquer.
+//Controlador de FACHADA (um para o sistema todo) serve quando há poucos eventos; por CASO DE USO
+//é o certo em sistemas grandes, para a fachada não virar um God Object.
+//Sintomas de "bloated controller": um único controlador para tudo, com estado que deveria estar no
+//domínio e que calcula em vez de delegar.
+//Na prática: é o C do MVC, o @RestController do Spring, o recurso JAX-RS de um endpoint.

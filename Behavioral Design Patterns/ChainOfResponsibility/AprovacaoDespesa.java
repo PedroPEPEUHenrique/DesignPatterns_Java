@@ -1,16 +1,8 @@
-//Suponha que a sua tarefa seja implementar a alçada de aprovação de despesas. As regras são:
-//Até R$ 1.000,00 o supervisor aprova
-//Até R$ 10.000,00 o gerente aprova
-//Até R$ 100.000,00 o diretor aprova
-//Acima disso vai para o conselho
-
-//Imagine a solução com um if/else encadeado dentro do serviço de despesas. Cada mudança de alçada
-//- e elas mudam - obriga a alterar essa classe. Pior: a ordem das faixas fica implícita na ordem
-//dos ifs, e não há como montar uma alçada diferente por filial em tempo de execução.
-
-//O Chain of Responsibility resolve o problema de evitar o acoplamento entre quem envia uma
-//requisição e quem a trata, dando a MAIS DE UM objeto a chance de tratá-la. A requisição percorre
-//a corrente até que alguém a resolva.
+//Implementar a alçada de aprovação de despesas: supervisor até R$ 1.000, gerente até R$ 10.000,
+//diretor até R$ 100.000, acima disso o conselho. Com if/else encadeado, cada mudança de alçada
+//altera a classe e a ordem das faixas fica implícita na ordem dos ifs.
+//O Chain of Responsibility evita o acoplamento entre quem envia a requisição e quem a trata,
+//dando a MAIS DE UM objeto a chance de tratá-la.
 
 class Despesa {
     private final String descricao;
@@ -36,20 +28,17 @@ class Despesa {
     }
 }
 
-// Padrão Chain of Responsibility - o Handler
-// Guarda a referência para o PRÓXIMO da corrente. É essa referência que substitui o if/else:
-// a estrutura de decisão vira a estrutura de ligação entre objetos.
+// Handler
+// A referência ao PRÓXIMO substitui o if/else: a estrutura de decisão vira estrutura de ligação.
 abstract class Aprovador {
 
     private Aprovador proximo;
 
-    // Devolve o parâmetro para permitir encadear a montagem de forma legível.
     public Aprovador encadear(Aprovador proximo) {
         this.proximo = proximo;
         return proximo;
     }
 
-    // Template do fluxo: tenta tratar, senão repassa. As subclasses só dizem SE tratam e COMO.
     public final void aprovar(Despesa despesa) {
         if (podeAprovar(despesa)) {
             registrarAprovacao(despesa);
@@ -60,8 +49,7 @@ abstract class Aprovador {
             proximo.aprovar(despesa);
             return;
         }
-        // Fim da corrente sem tratamento. É uma decisão de projeto: falhar ou ignorar em silêncio.
-        // Ignorar em silêncio é a origem de bugs difíceis - aqui a corrente falha explicitamente.
+        // Fim da corrente sem tratamento: falhar explicitamente em vez de ignorar em silêncio.
         throw new IllegalStateException("nenhum aprovador para " + despesa.getDescricao());
     }
 
@@ -114,10 +102,9 @@ class Diretor extends Aprovador {
     }
 }
 
+// Elo final que aceita tudo: sem ele, valores altos chegariam ao fim e lançariam exceção.
 class Conselho extends Aprovador {
 
-    // Elo final que aceita tudo. Sem ele, valores muito altos chegariam ao fim da corrente e
-    // lançariam exceção.
     @Override
     protected boolean podeAprovar(Despesa despesa) {
         return true;
@@ -134,15 +121,14 @@ class Conselho extends Aprovador {
     }
 }
 
-// Um elo que NÃO aprova, apenas observa e repassa. A corrente aceita responsabilidades de tipos
-// diferentes - não precisa ser só alçada de valor.
+// Elo que NÃO aprova, apenas observa e repassa.
 class RegistroAuditoria extends Aprovador {
 
     @Override
     protected boolean podeAprovar(Despesa despesa) {
         System.out.println("  <auditoria> registrando pedido de " + despesa.getValorEmCentavos()
                            + " centavos");
-        return false;   // nunca trata: sempre deixa seguir
+        return false;
     }
 
     @Override
@@ -151,7 +137,7 @@ class RegistroAuditoria extends Aprovador {
     }
 }
 
-// Elo que INTERROMPE a corrente por uma razão diferente da alçada.
+// Elo que interrompe a corrente por uma razão diferente da alçada.
 class BloqueioOrcamentario extends Aprovador {
     private int saldoDisponivelEmCentavos;
 
@@ -176,13 +162,11 @@ class BloqueioOrcamentario extends Aprovador {
     }
 }
 
-// Classe Cliente
+// Cliente: conhece apenas o PRIMEIRO elo e a abstração Aprovador.
 class AprovacaoDespesa {
 
     private final Aprovador inicioDaCorrente;
 
-    // O cliente conhece apenas o PRIMEIRO elo e a abstração Aprovador. Não sabe quantos elos
-    // existem, nem quais, nem qual deles vai tratar.
     public AprovacaoDespesa(Aprovador inicioDaCorrente) {
         this.inicioDaCorrente = inicioDaCorrente;
     }
@@ -193,7 +177,7 @@ class AprovacaoDespesa {
     }
 
     public static void main(String[] args) {
-        // Montagem da corrente. A ordem é o que define a política - e ela é dado, não código.
+        // A ordem da montagem é o que define a política - e ela é dado, não código.
         Aprovador inicio = new RegistroAuditoria();
         inicio.encadear(new BloqueioOrcamentario(5000000))
               .encadear(new Supervisor())
@@ -209,7 +193,6 @@ class AprovacaoDespesa {
         fluxo.solicitar(new Despesa("aquisição de concorrente", 900000000, false));
         fluxo.solicitar(new Despesa("servidor emergencial", 6000000, true));
 
-        // Outra política, sem alterar nenhuma classe: filial pequena, sem diretoria local.
         System.out.println("--- filial com alçada reduzida ---");
         Aprovador filial = new Supervisor();
         filial.encadear(new Gerente());
@@ -222,6 +205,6 @@ class AprovacaoDespesa {
     }
 }
 
-//Onde isso aparece na prática: filtros de Servlet (FilterChain), interceptadores de CDI/EJB,
-//middlewares de frameworks web, e o tratamento de exceções da própria linguagem - um throw sobe a
-//pilha até encontrar um catch que trate aquele tipo, que é a mesma ideia.
+//Onde aparece: filtros de Servlet (FilterChain), interceptadores de CDI/EJB, middlewares de
+//frameworks web e o próprio tratamento de exceções - um throw sobe a pilha até encontrar um catch
+//que trate aquele tipo.

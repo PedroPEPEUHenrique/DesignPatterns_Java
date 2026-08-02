@@ -1,24 +1,13 @@
-//Suponha que a sua tarefa seja calcular impostos sobre a carteira de ativos de um cliente. Os
-//tipos de ativo são estáveis e bem definidos:
-//Ação
-//Fundo imobiliário
-//Título público
-
-//Imagine que, além do imposto, pedem o valor de mercado, depois um relatório em texto, depois a
-//exportação para o formato do contador. Colocar cada operação como um método dentro de cada classe
-//de ativo faz as classes de domínio incharem com regras fiscais, de relatório e de exportação -
-//responsabilidades que não são delas. E cada operação nova reabre TODAS as classes de ativo.
-
-//O Visitor resolve o problema de representar uma operação a ser realizada sobre os elementos de
-//uma estrutura de objetos, permitindo definir uma operação NOVA sem alterar as classes dos
-//elementos sobre os quais ela opera.
+//Calcular imposto, valor de mercado, relatório e exportação sobre uma carteira de ativos (ação,
+//fundo imobiliário, título público). Colocar cada operação dentro de cada classe de ativo infla o
+//domínio com regras fiscais e de relatório, e cada operação nova reabre TODAS as classes.
+//O Visitor representa uma operação a ser realizada sobre os elementos de uma estrutura de objetos,
+//permitindo definir uma operação NOVA sem alterar as classes dos elementos.
 
 import java.util.ArrayList;
 import java.util.List;
 
-// Padrão Visitor - a interface Visitor
-// Um método por tipo concreto de elemento. É essa lista que torna o padrão caro quando os tipos
-// mudam - e barato quando eles são estáveis.
+// Visitor: um método por tipo concreto de elemento.
 interface VisitanteAtivo<R> {
 
     R visitarAcao(Acao acao);
@@ -28,14 +17,10 @@ interface VisitanteAtivo<R> {
     R visitarTituloPublico(TituloPublico titulo);
 }
 
-// Padrão Visitor - a interface Element
-// A ÚNICA coisa que o domínio precisa oferecer é o accept. Nenhuma regra fiscal, de relatório ou
-// de exportação entra aqui.
+// Element: a ÚNICA coisa que o domínio precisa oferecer é o accept.
 interface Ativo {
     <R> R aceitar(VisitanteAtivo<R> visitante);
 }
-
-// ELEMENTOS CONCRETOS - classes de domínio limpas, com dados e nada mais.
 
 class Acao implements Ativo {
     private final String ticker;
@@ -70,11 +55,9 @@ class Acao implements Ativo {
         return (precoAtualEmCentavos - precoMedioEmCentavos) * quantidade;
     }
 
-    // DOUBLE DISPATCH - o mecanismo central do padrão.
-    // A 1ª chamada (aceitar) resolve o TIPO DO ELEMENTO pelo polimorfismo normal do Java.
-    // A 2ª chamada (visitarAcao) resolve a OPERAÇÃO pelo tipo do visitante.
-    // Java só faz despacho dinâmico sobre o receptor, nunca sobre o argumento - é por isso que
-    // este "vai e volta" é necessário.
+    // DOUBLE DISPATCH: a 1ª chamada resolve o TIPO DO ELEMENTO pelo polimorfismo normal; a 2ª
+    // resolve a OPERAÇÃO pelo tipo do visitante. Java só despacha sobre o receptor, nunca sobre o
+    // argumento - por isso este "vai e volta" é necessário.
     @Override
     public <R> R aceitar(VisitanteAtivo<R> visitante) {
         return visitante.visitarAcao(this);
@@ -151,25 +134,22 @@ class TituloPublico implements Ativo {
     }
 }
 
-// VISITANTE 1 - imposto. Toda a regra fiscal reunida em UMA classe, em vez de espalhada por três.
+// Toda a regra fiscal reunida em UMA classe, em vez de espalhada por três.
 class CalculoImposto implements VisitanteAtivo<Integer> {
 
     @Override
     public Integer visitarAcao(Acao acao) {
-        // 15% sobre o lucro, e só sobre lucro.
         int lucro = acao.lucroEmCentavos();
         return lucro > 0 ? (int) (lucro * 0.15) : 0;
     }
 
     @Override
     public Integer visitarFundoImobiliario(FundoImobiliario fundo) {
-        // Rendimento de FII é isento para pessoa física.
-        return 0;
+        return 0;   // rendimento de FII é isento para pessoa física
     }
 
     @Override
     public Integer visitarTituloPublico(TituloPublico titulo) {
-        // Tabela regressiva por prazo.
         double aliquota = titulo.getDiasAplicado() <= 180 ? 0.225
                         : titulo.getDiasAplicado() <= 360 ? 0.20
                         : titulo.getDiasAplicado() <= 720 ? 0.175
@@ -178,8 +158,7 @@ class CalculoImposto implements VisitanteAtivo<Integer> {
     }
 }
 
-// VISITANTE 2 - valor de mercado. Operação NOVA sem tocar em Acao, FundoImobiliario ou
-// TituloPublico. Esse é exatamente o ganho do padrão.
+// Operação NOVA sem tocar em nenhuma classe de ativo: é esse o ganho do padrão.
 class ValorDeMercado implements VisitanteAtivo<Integer> {
 
     @Override
@@ -198,8 +177,7 @@ class ValorDeMercado implements VisitanteAtivo<Integer> {
     }
 }
 
-// VISITANTE 3 - descrição em texto. Mostra que o tipo de retorno pode ser qualquer um, graças ao
-// parâmetro genérico da interface.
+// O tipo de retorno pode ser qualquer um, graças ao parâmetro genérico da interface.
 class DescricaoAtivo implements VisitanteAtivo<String> {
 
     @Override
@@ -218,15 +196,14 @@ class DescricaoAtivo implements VisitanteAtivo<String> {
     }
 }
 
-// VISITANTE 4 - acumula estado enquanto percorre. Um visitante pode guardar resultado parcial
-// entre as visitas, algo difícil de fazer se a operação estivesse dentro de cada elemento.
+// Um visitante pode acumular resultado parcial entre as visitas.
 class RendaMensalProjetada implements VisitanteAtivo<Void> {
 
     private int totalEmCentavos;
 
     @Override
     public Void visitarAcao(Acao acao) {
-        return null;   // dividendos ficam fora desta projeção
+        return null;
     }
 
     @Override
@@ -246,7 +223,7 @@ class RendaMensalProjetada implements VisitanteAtivo<Void> {
     }
 }
 
-// Classe Cliente
+// Cliente: sem instanceof, sem cast, sem switch por tipo.
 class OperacoesSobreAtivos {
 
     private final List<Ativo> carteira = new ArrayList<>();
@@ -255,7 +232,6 @@ class OperacoesSobreAtivos {
         carteira.add(ativo);
     }
 
-    // Sem instanceof, sem cast, sem switch por tipo. O visitante é aplicado uniformemente.
     public int somar(VisitanteAtivo<Integer> visitante) {
         int total = 0;
         for (Ativo ativo : carteira) {
@@ -299,14 +275,9 @@ class OperacoesSobreAtivos {
     }
 }
 
-//O trade-off do Visitor, e a razão de ele ser usado com parcimônia:
-//É FÁCIL acrescentar uma OPERAÇÃO nova - basta uma classe de visitante.
-//É DIFÍCIL acrescentar um TIPO novo de elemento - obriga a alterar a interface do visitante e
-//  todos os visitantes existentes.
-//Ou seja: use quando a hierarquia de elementos for estável e as operações variarem muito. Se for
-//o contrário, o polimorfismo comum (métodos nas próprias classes) é a resposta certa.
-//
-//Outro custo: o visitante costuma precisar de acesso ao estado do elemento, o que empurra a classe
-//de domínio a expor getters e enfraquece o encapsulamento.
-//Onde aparece: compiladores e analisadores estáticos percorrendo a árvore sintática, e o
-//FileVisitor de java.nio.file.Files.walkFileTree.
+//O trade-off: é FÁCIL acrescentar uma OPERAÇÃO nova (uma classe) e DIFÍCIL acrescentar um TIPO
+//novo de elemento (altera a interface do visitante e todos os visitantes existentes). Use quando a
+//hierarquia for estável e as operações variarem muito; no caso contrário, polimorfismo comum.
+//Outro custo: o visitante precisa do estado do elemento, o que empurra a classe de domínio a
+//expor getters.
+//Onde aparece: compiladores percorrendo a árvore sintática e o FileVisitor de Files.walkFileTree.

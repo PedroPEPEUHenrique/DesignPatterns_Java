@@ -1,14 +1,3 @@
-//Suponha que a sua tarefa seja percorrer os produtos de um catálogo para gerar uma listagem. O
-//catálogo guarda os produtos internamente em um array, mas a área de compras mantém os dela em
-//uma lista ligada e a loja física em uma árvore por categoria.
-
-//Imagine o código de listagem escrito para cada estrutura: um for com índice para o array, um
-//while com getProximo() para a lista, uma recursão para a árvore. Trocar a estrutura interna do
-//catálogo quebraria todos os clientes - a representação vazou.
-
-//O Iterator resolve o problema de fornecer uma maneira de acessar sequencialmente os elementos de
-//um agregado SEM expor a sua representação interna.
-
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -43,9 +32,6 @@ class Produto {
     }
 }
 
-// Padrão Iterator - o Aggregate
-// A única coisa que o agregado promete é saber produzir um iterador. Em Java isso já é padrão da
-// linguagem: implementar Iterable habilita o for-each.
 class CatalogoArray implements Iterable<Produto> {
 
     private final Produto[] produtos = new Produto[10];
@@ -55,9 +41,6 @@ class CatalogoArray implements Iterable<Produto> {
         produtos[quantidade++] = produto;
     }
 
-    // Padrão Iterator - o iterador concreto, como classe interna
-    // Sendo interna, ele enxerga a representação (o array e o contador) sem que ninguém de fora
-    // precise enxergá-la. É essa combinação que faz o padrão funcionar.
     @Override
     public Iterator<Produto> iterator() {
         return new Iterator<Produto>() {
@@ -79,8 +62,6 @@ class CatalogoArray implements Iterable<Produto> {
     }
 }
 
-// Outra estrutura interna, MESMA interface para o cliente. Aqui a representação é uma lista
-// encadeada escrita à mão - e o cliente continua sem saber disso.
 class CatalogoListaLigada implements Iterable<Produto> {
 
     private No primeiro;
@@ -130,8 +111,6 @@ class CatalogoListaLigada implements Iterable<Produto> {
     }
 }
 
-// Iterador com FILTRO. Como iterar é responsabilidade de um objeto separado, dá para ter vários
-// percursos diferentes sobre o mesmo agregado - sem inchar a classe do agregado.
 class IteradorPorCategoria implements Iterator<Produto> {
 
     private final Iterator<Produto> origem;
@@ -144,8 +123,6 @@ class IteradorPorCategoria implements Iterator<Produto> {
         avancar();
     }
 
-    // O elemento precisa ser buscado ANTES de hasNext() poder responder: um filtro só sabe se
-    // ainda há elementos depois de procurar o próximo que passa no critério.
     private void avancar() {
         proximo = null;
         while (origem.hasNext()) {
@@ -173,14 +150,11 @@ class IteradorPorCategoria implements Iterator<Produto> {
     }
 }
 
-// Classe Cliente
 class CatalogoProdutos {
 
-    // O parâmetro é Iterable: este método serve para o catálogo em array, para o em lista ligada
-    // e para qualquer coleção da biblioteca padrão. Nenhum deles precisa expor sua estrutura.
     public void listar(String titulo, Iterable<Produto> agregado) {
         System.out.println(titulo);
-        for (Produto produto : agregado) {   // o for-each usa iterator() por baixo
+        for (Produto produto : agregado) {
             System.out.println("  " + produto);
         }
     }
@@ -207,16 +181,12 @@ class CatalogoProdutos {
 
         CatalogoProdutos cliente = new CatalogoProdutos();
 
-        // Três representações internas completamente diferentes, um único código de listagem.
         cliente.listar("catálogo em array:", porArray);
         cliente.listar("catálogo em lista ligada:", porLista);
         cliente.listar("catálogo em ArrayList:", daBibliotecaPadrao);
 
-        // Percurso alternativo sobre o mesmo agregado.
         cliente.listar("só periféricos:", new IteradorPorCategoria(porArray, "periférico"));
 
-        // Dois iteradores independentes sobre o MESMO agregado, cada um com sua posição.
-        // Manter a posição no iterador, e não no agregado, é o que torna isso possível.
         Iterator<Produto> a = porArray.iterator();
         Iterator<Produto> b = porArray.iterator();
         a.next();
@@ -224,12 +194,3 @@ class CatalogoProdutos {
         System.out.println("iterador B está em: " + b.next());
     }
 }
-
-//Iterador EXTERNO x INTERNO:
-//Externo é o do exemplo - o cliente controla o avanço com hasNext()/next(), podendo parar no meio.
-//Interno é quando o agregado controla o percurso e o cliente só fornece a operação a aplicar; em
-//Java é o forEach(Consumer) e toda a API de Stream.
-//
-//Cuidado clássico: modificar a coleção durante a iteração. Os iteradores de java.util são
-//fail-fast e lançam ConcurrentModificationException - a remoção correta é pelo próprio iterador,
-//com iterator.remove(), exatamente como no exemplo de Factory Method deste repositório.

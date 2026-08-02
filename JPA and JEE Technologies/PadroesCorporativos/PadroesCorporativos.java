@@ -1,13 +1,9 @@
 //PADRÕES CORPORATIVOS - DAO, REPOSITORY, DTO, SERVICE LAYER E SESSION FACADE
-
-//Este arquivo é o único da pasta que COMPILA E RODA: os padrões corporativos estão escritos em
-//Java puro, sem depender das APIs do Jakarta EE. A intenção é mostrar a ARQUITETURA EM CAMADAS
-//que a plataforma pressupõe, e a qual padrão do GoF/GRASP cada peça corresponde.
-
-//As camadas, de fora para dentro:
-//  APRESENTAÇÃO -> SERVIÇO (fachada + regra de caso de uso) -> DOMÍNIO -> PERSISTÊNCIA
-//A regra é que a dependência aponte sempre para dentro. A apresentação conhece o serviço; o
-//serviço conhece o domínio e as INTERFACES de persistência; o domínio não conhece ninguém.
+//Único arquivo da seção que COMPILA E RODA: os padrões estão em Java puro, sem as APIs do
+//Jakarta EE. Mostra a ARQUITETURA EM CAMADAS que a plataforma pressupõe.
+//  APRESENTAÇÃO -> SERVIÇO -> DOMÍNIO -> PERSISTÊNCIA
+//A dependência aponta sempre para dentro: a apresentação conhece o serviço, o serviço conhece o
+//domínio e as INTERFACES de persistência, e o domínio não conhece ninguém.
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -15,10 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-// ===========================================================================
-// CAMADA DE DOMÍNIO
-// Entidades com comportamento. Sem anotação, sem SQL, sem HTTP - só negócio.
-// ===========================================================================
+// ===== DOMÍNIO - entidades com comportamento. Sem anotação, sem SQL, sem HTTP. =====
 
 class Cliente {
 
@@ -69,7 +62,7 @@ class ItemPedido {
         this.precoUnitarioEmCentavos = precoUnitarioEmCentavos;
     }
 
-    // Information Expert: quem tem quantidade e preço calcula o subtotal.
+    // Information Expert
     int subtotalEmCentavos() {
         return quantidade * precoUnitarioEmCentavos;
     }
@@ -144,19 +137,11 @@ class Pedido {
     }
 }
 
-// ===========================================================================
-// CAMADA DE PERSISTÊNCIA - DAO / REPOSITORY
-//
-// DAO (Data Access Object) - padrão dos Core J2EE Patterns. Encapsula o acesso a uma FONTE DE
-//   DADOS. Fala em termos de tabela/registro e costuma ter CRUD.
-// REPOSITORY - padrão do DDD. Também esconde a persistência, mas apresenta-se como uma COLEÇÃO
-//   de objetos de domínio, com métodos na linguagem do negócio.
-// Na prática os dois se confundem; o que importa é o efeito: o domínio e o serviço não sabem se
-// há JDBC, JPA, arquivo ou memória do outro lado.
-//
-// Padrões envolvidos: Pure Fabrication (a classe não existe no negócio), Protected Variations
-// (interface estável sobre a tecnologia volátil) e Low Coupling.
-// ===========================================================================
+// ===== PERSISTÊNCIA - DAO / REPOSITORY =====
+// DAO (Core J2EE Patterns) encapsula o acesso a uma FONTE DE DADOS e fala em termos de registro.
+// REPOSITORY (DDD) apresenta-se como uma COLEÇÃO de objetos de domínio. Na prática se confundem;
+// o que importa é o efeito: o domínio não sabe se há JDBC, JPA, arquivo ou memória do outro lado.
+// Padrões: Pure Fabrication, Protected Variations, Low Coupling.
 
 interface PedidoRepository {
 
@@ -176,7 +161,6 @@ interface ClienteRepository {
     Optional<Cliente> porCpf(String cpf);
 }
 
-// Implementação em memória - a que roda no main e nos testes.
 class PedidoRepositoryEmMemoria implements PedidoRepository {
 
     private final Map<String, Pedido> base = new HashMap<>();
@@ -233,8 +217,8 @@ class ClienteRepositoryEmMemoria implements ClienteRepository {
     }
 }
 
-// A implementação JPA teria EXATAMENTE a mesma interface. Trocar uma pela outra não faz o serviço
-// mudar - é esse o teste de que a proteção funcionou.
+// A implementação JPA teria EXATAMENTE a mesma interface - trocar uma pela outra não faz o serviço
+// mudar, e é esse o teste de que a proteção funcionou:
 //
 //   class PedidoRepositoryJpa implements PedidoRepository {
 //       @PersistenceContext private EntityManager em;
@@ -242,14 +226,7 @@ class ClienteRepositoryEmMemoria implements ClienteRepository {
 //       public Optional<Pedido> porCodigo(String codigo) { ... createQuery ... }
 //   }
 
-// ===========================================================================
-// DTO - DATA TRANSFER OBJECT
-//
-// Objeto sem comportamento que atravessa a fronteira. Existe para:
-//  - não expor a entidade (e o modelo interno) ao mundo externo;
-//  - levar em UMA chamada tudo que a tela precisa, em vez de várias idas ao servidor;
-//  - evitar problemas de serialização e de carregamento preguiçoso.
-// ===========================================================================
+// ===== DTO - atravessa a fronteira sem expor a entidade =====
 
 class NovoPedidoDTO {
 
@@ -319,9 +296,8 @@ class PedidoResumoDTO {
     }
 }
 
-// ASSEMBLER / MAPPER - converte entidade em DTO e vice-versa.
-// Outra Fabricação Pura: sem ela, ou a entidade ganharia um "paraDTO()" (baixa coesão), ou o DTO
-// conheceria a entidade (acoplamento na direção errada).
+// ASSEMBLER - sem ela, ou a entidade ganharia um "paraDTO()" (baixa coesão), ou o DTO conheceria a
+// entidade (acoplamento na direção errada).
 class PedidoAssembler {
 
     PedidoResumoDTO paraResumo(Pedido pedido) {
@@ -341,9 +317,7 @@ class PedidoAssembler {
     }
 }
 
-// ===========================================================================
-// SERVIÇOS DE APOIO - as variações protegidas do caso de uso
-// ===========================================================================
+// ===== SERVIÇOS DE APOIO =====
 
 interface GatewayPagamento {
     String cobrar(String cpf, int valorEmCentavos);
@@ -370,17 +344,11 @@ class NotificadorConsole implements Notificador {
     }
 }
 
-// ===========================================================================
-// SERVICE LAYER / SESSION FACADE
-//
-// Session Facade (Core J2EE Patterns): uma fachada de granularidade GROSSA sobre um conjunto de
-// objetos de negócio de granularidade fina. Nasceu para evitar que o cliente remoto fizesse
-// dezenas de chamadas de rede - hoje o motivo principal é outro: é aqui que fica a FRONTEIRA
-// TRANSACIONAL e a coordenação do caso de uso.
-//
-// Em Jakarta EE esta classe seria um @Stateless com @Transactional em cada método.
-// Padrões: Facade (GoF), Controller (GRASP), Low Coupling (recebe tudo por injeção).
-// ===========================================================================
+// ===== SERVICE LAYER / SESSION FACADE =====
+// Session Facade nasceu para evitar dezenas de chamadas de rede do cliente remoto; hoje o motivo
+// principal é ser a FRONTEIRA TRANSACIONAL e coordenar o caso de uso.
+// Em Jakarta EE seria um @Stateless com @Transactional em cada método.
+// Padrões: Facade (GoF), Controller (GRASP), Low Coupling.
 
 class ServicoPedido {
 
@@ -390,8 +358,8 @@ class ServicoPedido {
     private final Notificador notificador;
     private final PedidoAssembler assembler;
 
-    // Injeção por construtor: as dependências ficam explícitas e o objeto nasce completo.
-    // É o que o @Inject do CDI faz por baixo.
+    // Injeção por construtor: as dependências ficam explícitas e o objeto nasce completo. É o que
+    // o @Inject do CDI faz por baixo.
     ServicoPedido(PedidoRepository pedidos, ClienteRepository clientes,
                   GatewayPagamento gateway, Notificador notificador, PedidoAssembler assembler) {
         this.pedidos = pedidos;
@@ -402,9 +370,8 @@ class ServicoPedido {
     }
 
     // UM método público = UM caso de uso = UMA transação.
-    // O serviço COORDENA; quem decide a regra é o domínio (Pedido calcula o seu total, valida a
-    // quantidade e controla o seu status). Um serviço que calcula no lugar do domínio produz o
-    // modelo anêmico.
+    // O serviço COORDENA; quem decide a regra é o domínio. Um serviço que calcula no lugar do
+    // domínio produz o modelo anêmico.
     public PedidoResumoDTO criarPedido(NovoPedidoDTO dto) {
         // ---- início da transação (@Transactional faria isso) ----
 
@@ -422,7 +389,7 @@ class ServicoPedido {
         pedidos.salvar(pedido);
         notificador.notificar(cliente.getCpf(), "pedido " + pedido.getCodigo() + " criado");
 
-        // Devolve DTO, e não a entidade: a camada de cima não fica acoplada ao domínio.
+        // Devolve DTO, não a entidade: a camada de cima não fica acoplada ao domínio.
         return assembler.paraResumo(pedido);
 
         // ---- commit ----
@@ -455,10 +422,7 @@ class ServicoPedido {
     }
 }
 
-// ===========================================================================
-// CAMADA DE APRESENTAÇÃO
-// Aqui estaria o @RestController, o Servlet ou o bean JSF. Ele só traduz entrada e saída.
-// ===========================================================================
+// ===== APRESENTAÇÃO - aqui estaria o @RestController, o Servlet ou o bean JSF =====
 
 class PedidoController {
 
@@ -497,13 +461,11 @@ class PedidoController {
     }
 }
 
-// Classe Cliente
 class PadroesCorporativos {
 
     public static void main(String[] args) {
-        // MONTAGEM DA APLICAÇÃO
-        // Este é o único ponto que conhece as implementações concretas. Em Jakarta EE, quem faz
-        // esta montagem é o contêiner CDI a partir das anotações - o efeito é o mesmo.
+        // Único ponto que conhece as implementações concretas. Em Jakarta EE, quem faz esta
+        // montagem é o contêiner CDI a partir das anotações - o efeito é o mesmo.
         ClienteRepository clientes = new ClienteRepositoryEmMemoria();
         PedidoRepository pedidos = new PedidoRepositoryEmMemoria();
 
@@ -519,7 +481,7 @@ class PadroesCorporativos {
         PedidoController controller = new PedidoController(servico);
 
         controller.postPedido("11122233344");
-        controller.postPedido("99999999999");   // cliente inexistente: erro tratado na fronteira
+        controller.postPedido("99999999999");   // cliente inexistente
 
         controller.getPorCliente("11122233344");
 
@@ -532,24 +494,23 @@ class PadroesCorporativos {
 }
 
 //QUADRO DE CORRESPONDÊNCIA
-//Camada / peça          Padrão corporativo      Padrão GoF / GRASP
+//Camada / peça          Padrão corporativo         Padrão GoF / GRASP
 //-------------------------------------------------------------------------------
-//Resource, Servlet      Front Controller        Controller (GRASP), Facade
-//DTO                    Data Transfer Object    Pure Fabrication
+//Resource, Servlet      Front Controller           Controller (GRASP), Facade
+//DTO                    Data Transfer Object       Pure Fabrication
 //Assembler              Transfer Object Assembler  Pure Fabrication, Builder
-//ServicoPedido          Session Facade,         Facade (GoF), Controller (GRASP),
-//                       Service Layer           Low Coupling
-//PedidoRepository       DAO / Repository        Pure Fabrication, Protected Variations
-//Entidades              Domain Model            Information Expert, Creator, Polymorphism
-//EntityManager          Unit of Work,           Facade sobre JDBC
-//                       Identity Map
-//Proxy LAZY da JPA      -                       Proxy (GoF)
-//Filtro de servlet      Intercepting Filter     Chain of Responsibility
-//Interceptador CDI      -                       Decorator / Proxy
-//@Inject                Dependency Injection    Indirection, Protected Variations
-//@Produces              -                       Factory Method
-//@Observes / Event      -                       Observer
+//ServicoPedido          Session Facade,            Facade, Controller, Low Coupling
+//                       Service Layer
+//PedidoRepository       DAO / Repository           Pure Fabrication, Protected Variations
+//Entidades              Domain Model               Information Expert, Creator, Polymorphism
+//EntityManager          Unit of Work, Identity Map Facade sobre JDBC
+//Proxy LAZY da JPA      -                          Proxy
+//Filtro de servlet      Intercepting Filter        Chain of Responsibility
+//Interceptador CDI      -                          Decorator / Proxy
+//@Inject                Dependency Injection       Indirection, Protected Variations
+//@Produces              -                          Factory Method
+//@Observes / Event      -                          Observer
 //
-//A conclusão do estudo: os frameworks corporativos não substituem os padrões - eles são feitos
-//DE padrões. Reconhecer qual padrão está por trás de cada anotação é o que permite prever o
-//comportamento do contêiner em vez de decorá-lo.
+//Os frameworks corporativos não substituem os padrões - eles são feitos DE padrões. Reconhecer
+//qual está por trás de cada anotação é o que permite prever o comportamento do contêiner em vez
+//de decorá-lo.

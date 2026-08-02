@@ -1,17 +1,11 @@
 //JAKARTA EE - CAMADA DE NEGÓCIO: CDI, EJB, TRANSAÇÕES E INTERCEPTADORES
-
-//ATENÇÃO: material de estudo. NÃO compila sem as APIs do Jakarta EE no classpath
-//(jakarta.enterprise.cdi-api, jakarta.ejb-api, jakarta.transaction-api, jakarta.inject-api).
-//Em projetos Java EE 8 e anteriores os pacotes começam com javax em vez de jakarta.
-//As entidades Pedido e StatusPedido são as da pasta MapeamentoObjetoRelacional.
-
-//O que o Java EE / Jakarta EE resolve: em uma aplicação corporativa, boa parte do trabalho não é
-//regra de negócio - é transação, segurança, concorrência, pool de conexões, ciclo de vida de
-//objetos, log e monitoramento. Escrever isso em cada classe é repetição e fonte de erro.
-//A plataforma inverte a responsabilidade: você declara O QUE quer com anotações e o CONTÊINER
-//executa o COMO em volta do seu código.
-//Isso é Inversão de Controle levada ao extremo - e cada serviço do contêiner é, na prática, um
-//Proxy ou um Decorator gerado em tempo de execução ao redor da sua classe.
+//NÃO compila sem as APIs do Jakarta EE (cdi-api, ejb-api, transaction-api, inject-api). Em Java EE
+//8 e anteriores os pacotes começam com javax. As entidades Pedido e StatusPedido são as da pasta
+//MapeamentoObjetoRelacional.
+//Numa aplicação corporativa, boa parte do trabalho não é regra de negócio - é transação,
+//segurança, concorrência, pool e ciclo de vida. A plataforma inverte a responsabilidade: você
+//DECLARA o que quer com anotações e o CONTÊINER executa o COMO em volta do seu código. Cada
+//serviço do contêiner é, na prática, um Proxy ou Decorator gerado em tempo de execução.
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -45,28 +39,19 @@ import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
-// ---------------------------------------------------------------------------
-// CDI - CONTEXTS AND DEPENDENCY INJECTION
-//
-// É o modelo de componentes unificado da plataforma. Qualquer classe com construtor sem
-// argumentos, dentro de um arquivo com beans.xml (ou com bean-discovery-mode="annotated"), é um
-// bean gerenciado: o contêiner a instancia, injeta suas dependências e controla seu ciclo de vida.
-// ---------------------------------------------------------------------------
-
-// ESCOPOS - definem QUANTO TEMPO a instância vive e para QUEM ela é compartilhada.
-//  @Dependent (padrão)  - uma instância por ponto de injeção, sem estado próprio
-//  @RequestScoped       - uma por requisição HTTP
-//  @SessionScoped       - uma por sessão de usuário (exige Serializable)
-//  @ApplicationScoped   - uma por aplicação; é o Singleton do GoF, só que gerenciado
-//  @ConversationScoped  - entre requisição e sessão, controlado pela aplicação
+// ESCOPOS CDI - quanto tempo a instância vive e para quem é compartilhada:
+//  @Dependent (padrão) - uma por ponto de injeção
+//  @RequestScoped      - uma por requisição HTTP
+//  @SessionScoped      - uma por sessão (exige Serializable)
+//  @ApplicationScoped  - uma por aplicação; é o Singleton do GoF, gerenciado
+//  @ConversationScoped - entre requisição e sessão, controlado pela aplicação
 
 @ApplicationScoped
 class TabelaDeFrete {
 
     private final java.util.Map<String, Integer> tabela = new java.util.HashMap<>();
 
-    // Chamado UMA vez, depois que todas as injeções foram feitas. Não use o construtor para
-    // inicialização que dependa de injeção - no construtor os campos injetados ainda são nulos.
+    // Chamado UMA vez, depois das injeções. No construtor os campos injetados ainda são nulos.
     @PostConstruct
     void carregar() {
         tabela.put("SUDESTE", 1800);
@@ -85,9 +70,9 @@ class TabelaDeFrete {
     }
 }
 
-// QUALIFICADORES - resolvem a ambiguidade quando existe mais de uma implementação da mesma
-// interface. Sem eles, o contêiner falha na subida com "ambiguous dependencies".
-// É Protected Variations (GRASP) com apoio do contêiner: o cliente pede um papel, não uma classe.
+// QUALIFICADORES - resolvem a ambiguidade quando há mais de uma implementação da mesma interface.
+// Sem eles, o contêiner falha na subida com "ambiguous dependencies". O cliente pede um papel,
+// não uma classe.
 @Qualifier
 @java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy.RUNTIME)
 @java.lang.annotation.Target({java.lang.annotation.ElementType.TYPE,
@@ -128,8 +113,8 @@ class PagamentoCartao implements MeioDePagamento {
     }
 }
 
-// PRODUTOR - fabrica beans que você não controla (classes de biblioteca, objetos de configuração)
-// ou cuja criação depende de lógica. É o Factory Method do GoF integrado ao contêiner.
+// PRODUTOR - fabrica beans que você não controla ou cuja criação depende de lógica.
+// É o Factory Method integrado ao contêiner.
 @ApplicationScoped
 class ConfiguracaoProducer {
 
@@ -146,11 +131,8 @@ class ConfiguracaoProducer {
     }
 }
 
-// ---------------------------------------------------------------------------
 // INTERCEPTADORES - o mecanismo por trás de tudo que a plataforma faz "em volta" do seu código.
-// É literalmente o padrão Decorator aplicado por proxy dinâmico.
-// ---------------------------------------------------------------------------
-
+// É o Decorator aplicado por proxy dinâmico.
 @InterceptorBinding
 @java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy.RUNTIME)
 @java.lang.annotation.Target({java.lang.annotation.ElementType.TYPE,
@@ -165,16 +147,15 @@ class InterceptadorAuditoria {
     @Inject
     private Logger log;
 
-    // O contexto dá acesso ao método, aos parâmetros e ao "prosseguir". Não chamar proceed()
-    // significa CANCELAR a execução do método real - é assim que um interceptador de segurança
-    // bloqueia uma chamada.
+    // Não chamar proceed() CANCELA a execução do método real - é assim que um interceptador de
+    // segurança bloqueia uma chamada.
     @AroundInvoke
     Object auditar(InvocationContext contexto) throws Exception {
         long inicio = System.currentTimeMillis();
         log.info("entrando em " + contexto.getMethod().getName());
 
         try {
-            return contexto.proceed();   // executa o método de negócio
+            return contexto.proceed();
         } finally {
             log.info("saindo de " + contexto.getMethod().getName()
                      + " em " + (System.currentTimeMillis() - inicio) + "ms");
@@ -182,18 +163,9 @@ class InterceptadorAuditoria {
     }
 }
 
-// ---------------------------------------------------------------------------
-// EJB - ENTERPRISE JAVA BEANS
-//
-// Hoje o EJB e o CDI convivem: o CDI cuida da injeção e do ciclo de vida, e o EJB entra quando
-// você precisa dos serviços que ele oferece de graça - transação, pool, concorrência,
-// temporizador e chamada assíncrona.
-// ---------------------------------------------------------------------------
-
-// @Stateless - o mais usado. O contêiner mantém um POOL de instâncias e entrega qualquer uma a
-// cada chamada. Consequência prática: NÃO guarde estado de conversa em atributos, porque a
-// próxima chamada do mesmo usuário pode cair em outra instância.
-// Todo método público é transacional por padrão (REQUIRED).
+// @Stateless - o contêiner mantém um POOL e entrega qualquer instância a cada chamada. Logo, NÃO
+// guarde estado de conversa em atributos: a próxima chamada do mesmo usuário pode cair em outra
+// instância. Todo método público é transacional por padrão (REQUIRED).
 @Stateless
 class ServicoPedido {
 
@@ -203,7 +175,6 @@ class ServicoPedido {
     @Inject
     private TabelaDeFrete tabelaDeFrete;
 
-    // Injeção por qualificador: este serviço quer Pix, e não "alguma" implementação.
     @Inject
     @Pix
     private MeioDePagamento pagamento;
@@ -211,13 +182,12 @@ class ServicoPedido {
     @Inject
     private Logger log;
 
-    // Evento CDI: publica um fato sem conhecer quem escuta. É o Observer do GoF, com o registro
-    // de observadores feito pelo contêiner.
+    // Evento CDI: publica um fato sem conhecer quem escuta. É o Observer, com o registro de
+    // observadores feito pelo contêiner.
     @Inject
     private Event<PedidoConfirmado> pedidoConfirmado;
 
-    // A transação é DECLARATIVA. Não há begin, commit nem rollback no código - o contêiner abre a
-    // transação antes do método e faz commit no retorno. Qualquer RuntimeException não tratada
+    // Transação DECLARATIVA: sem begin, commit ou rollback no código. RuntimeException não tratada
     // provoca rollback automático; exceções CHECKED, por padrão, NÃO provocam.
     @Auditado
     @Transactional(Transactional.TxType.REQUIRED)
@@ -235,23 +205,21 @@ class ServicoPedido {
 
         log.info("pedido " + pedidoId + " confirmado, frete " + frete);
 
-        // Quem escuta este evento roda na MESMA transação (por padrão, síncrono).
         pedidoConfirmado.fire(new PedidoConfirmado(pedidoId, valor));
 
         return comprovante;
     }
 
-    // ATRIBUTOS DE TRANSAÇÃO - definem o que fazer com a transação do CHAMADOR:
+    // ATRIBUTOS DE TRANSAÇÃO - o que fazer com a transação do CHAMADOR:
     //  REQUIRED (padrão) - usa a existente ou cria uma
-    //  REQUIRES_NEW      - suspende a do chamador e abre outra; usada para log/auditoria que deve
-    //                      sobreviver ao rollback da transação principal
-    //  MANDATORY         - exige uma transação em curso, senão lança exceção
-    //  SUPPORTS          - participa se houver, roda sem transação se não houver
-    //  NOT_SUPPORTED     - suspende a transação existente
+    //  REQUIRES_NEW      - suspende a do chamador e abre outra; para log que deve sobreviver ao
+    //                      rollback da transação principal
+    //  MANDATORY         - exige transação em curso, senão lança exceção
+    //  SUPPORTS          - participa se houver
+    //  NOT_SUPPORTED     - suspende a existente
     //  NEVER             - lança exceção se houver transação
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     public void registrarTentativa(Long pedidoId, String motivo) {
-        // Grava mesmo que a transação que chamou este método sofra rollback.
         log.warning("tentativa em " + pedidoId + ": " + motivo);
     }
 
@@ -262,8 +230,6 @@ class ServicoPedido {
     }
 }
 
-// Evento e observador: o emissor não conhece nenhum observador, e um observador novo não faz o
-// emissor mudar. Aberto para extensão, fechado para modificação.
 class PedidoConfirmado {
 
     private final Long pedidoId;
@@ -289,7 +255,7 @@ class NotificadorDeConfirmacao {
     @Inject
     private Logger log;
 
-    // @Observes registra este método como observador. Nada precisa ser cadastrado em lugar nenhum.
+    // @Observes registra o observador. Nada precisa ser cadastrado em lugar nenhum.
     void aoConfirmar(@Observes PedidoConfirmado evento) {
         log.info("enviando e-mail de confirmação do pedido " + evento.getPedidoId());
     }
@@ -298,20 +264,19 @@ class NotificadorDeConfirmacao {
 @ApplicationScoped
 class IntegracaoContabil {
 
-    // Segundo observador do MESMO evento. O ServicoPedido não ficou sabendo que ele existe.
+    // Segundo observador do MESMO evento; o ServicoPedido não ficou sabendo que ele existe.
     void aoConfirmar(@Observes PedidoConfirmado evento) {
         Logger.getLogger("contabil").info("lançando receita de " + evento.getValor());
     }
 }
 
-// @Stateful - mantém estado de conversa entre chamadas do MESMO cliente. É o caso do carrinho de
-// compras. Custa memória no servidor e complica o balanceamento de carga; hoje se prefere manter
-// esse estado no cliente ou em um cache distribuído.
+// @Stateful mantém estado de conversa entre chamadas do MESMO cliente (carrinho de compras). Custa
+// memória e complica o balanceamento; hoje se prefere estado no cliente ou em cache distribuído.
 
-// @Singleton (do EJB, não confundir com @ApplicationScoped do CDI) - uma única instância na
-// aplicação, com controle de CONCORRÊNCIA pelo contêiner.
+// @Singleton do EJB (diferente de @ApplicationScoped do CDI): instância única com controle de
+// CONCORRÊNCIA pelo contêiner.
 @Singleton
-@Startup   // instanciado na subida da aplicação, e não na primeira chamada
+@Startup   // instanciado na subida, não na primeira chamada
 @ConcurrencyManagement(ConcurrencyManagementType.CONTAINER)
 class MonitorDeIntegracoes {
 
@@ -328,9 +293,8 @@ class MonitorDeIntegracoes {
         log.info("monitor de integrações no ar");
     }
 
-    // Temporizador declarativo: substitui Thread, Timer e agendadores externos. Em cluster,
-    // atenção para não rodar em todos os nós - existe @Schedule(persistent = ...) e configuração
-    // específica de cada servidor para isso.
+    // Temporizador declarativo, no lugar de Thread, Timer ou agendador externo. Em cluster, atenção
+    // para não rodar em todos os nós.
     @Schedule(hour = "*", minute = "*/15", persistent = false)
     void verificarPendencias() {
         execucoes++;
@@ -338,11 +302,7 @@ class MonitorDeIntegracoes {
     }
 }
 
-// ---------------------------------------------------------------------------
-// BEAN GERENCIADO PARA A APRESENTAÇÃO
-// @Named expõe o bean por nome para a camada de visão (JSF, por exemplo).
-// ---------------------------------------------------------------------------
-
+// @Named expõe o bean por nome para a camada de visão (JSF).
 @Named("pedidoBean")
 @RequestScoped
 class PedidoBean {
@@ -353,8 +313,7 @@ class PedidoBean {
     private Long pedidoId;
     private String mensagem;
 
-    // O bean de apresentação NÃO tem regra de negócio: ele coleta a entrada, delega e prepara a
-    // saída. É o Controller do GRASP.
+    // Sem regra de negócio: coleta a entrada, delega e prepara a saída. É o Controller do GRASP.
     public String confirmar() {
         try {
             String comprovante = servicoPedido.confirmar(pedidoId, new BigDecimal("199.90"), "SUDESTE");
@@ -382,8 +341,8 @@ class PedidoBean {
 @SessionScoped
 class CarrinhoSessao implements java.io.Serializable {
 
-    // @SessionScoped e @ConversationScoped EXIGEM Serializable: o contêiner pode passivar a
-    // sessão para disco ou replicá-la no cluster.
+    // @SessionScoped e @ConversationScoped EXIGEM Serializable: o contêiner pode passivar a sessão
+    // para disco ou replicá-la no cluster.
     private static final long serialVersionUID = 1L;
 
     private final List<String> skus = new java.util.ArrayList<>();
@@ -397,18 +356,11 @@ class CarrinhoSessao implements java.io.Serializable {
     }
 }
 
-//MAPA MENTAL DA CAMADA DE NEGÓCIO
-//CDI      - injeção, escopos, produtores, eventos, interceptadores, decoradores
-//EJB      - transação declarativa, pool, concorrência, temporizador, chamada assíncrona
-//JTA      - a transação em si; @Transactional é a forma declarativa de usá-la
-//JPA      - persistência (ver a pasta JPA)
-//Bean Validation - @NotNull, @Positive, @Size validados na fronteira dos métodos
-//
 //OS PADRÕES POR TRÁS DAS ANOTAÇÕES
-//@Inject                    - Dependency Injection, que é Indirection + Protected Variations
-//@ApplicationScoped         - Singleton gerenciado, sem os problemas de estado global do estático
+//@Inject                    - Dependency Injection = Indirection + Protected Variations
+//@ApplicationScoped         - Singleton gerenciado, sem os problemas do estado global estático
 //@Produces                  - Factory Method
 //@Observes / Event          - Observer
-//@Interceptor / @Decorator  - Decorator e Proxy aplicados por proxy dinâmico
-//@Transactional             - Template Method: o contêiner executa begin/commit/rollback em volta
+//@Interceptor / @Decorator  - Decorator e Proxy por proxy dinâmico
+//@Transactional             - Template Method: o contêiner roda begin/commit/rollback em volta
 //Qualificadores             - Strategy escolhida por metadado em vez de por if

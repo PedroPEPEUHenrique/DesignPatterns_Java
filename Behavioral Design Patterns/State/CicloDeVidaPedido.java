@@ -1,22 +1,13 @@
-//Suponha que a sua tarefa seja controlar o ciclo de vida de um pedido. Os estados são:
-//Novo -> Pago -> Enviado -> Entregue
-//E de Novo ou Pago é possível ir para Cancelado.
-
-//Imagine a solução com um campo "status" do tipo String e um if em cada operação:
-//  if ("NOVO".equals(status)) { ... } else if ("PAGO".equals(status)) { ... }
-//O mesmo encadeamento se repete em pagar(), enviar(), entregar() e cancelar(). Acrescentar o
-//estado "Em separação" obriga a revisitar todos eles, e nada impede que um trecho esqueça um caso.
-
-//O State resolve o problema de permitir que um objeto altere o seu comportamento quando o seu
-//estado interno muda - o objeto parece mudar de classe. Cada estado vira uma CLASSE, e a
-//transição vira a troca da referência para o objeto de estado.
+//Controlar o ciclo de vida de um pedido: Novo -> Pago -> Enviado -> Entregue, com cancelamento a
+//partir de Novo ou Pago. Com um campo status e um if em cada operação, o mesmo encadeamento se
+//repete em pagar(), enviar(), entregar() e cancelar().
+//O State permite que um objeto altere o seu comportamento quando o estado interno muda - o objeto
+//parece mudar de classe. Cada estado vira uma CLASSE e a transição vira a troca da referência.
 
 import java.util.ArrayList;
 import java.util.List;
 
-// Padrão State - a interface State
-// Declara toda operação cujo comportamento depende do estado. Cada estado concreto responde a
-// todas elas - inclusive dizendo que não pode.
+// State
 interface EstadoPedido {
 
     void pagar(Pedido pedido);
@@ -30,8 +21,8 @@ interface EstadoPedido {
     String nome();
 }
 
-// Base com o comportamento padrão: recusar. Assim cada estado concreto sobrescreve só o que ele
-// realmente PERMITE, e a lista de transições válidas fica evidente na leitura de cada classe.
+// Base que recusa tudo: cada estado concreto sobrescreve só o que PERMITE, então a lista de
+// transições válidas fica evidente na leitura de cada classe.
 abstract class EstadoBase implements EstadoPedido {
 
     @Override
@@ -87,10 +78,9 @@ class EstadoPago extends EstadoBase {
         pedido.mudarPara(new EstadoEnviado());
     }
 
+    // Cancelar MUDA conforme o estado: aqui há estorno, no estado novo não.
     @Override
     public void cancelar(Pedido pedido) {
-        // O comportamento de cancelar MUDA conforme o estado: aqui há estorno, no estado novo não.
-        // Com if/else isso viraria um if dentro de outro if.
         System.out.println("  cancelamento com estorno do pagamento");
         pedido.mudarPara(new EstadoCancelado());
     }
@@ -132,9 +122,7 @@ class EstadoCancelado extends EstadoBase {
     }
 }
 
-// Padrão State - o Context
-// Repare no que sumiu: não há um único if de status nesta classe. Ela apenas DELEGA ao objeto de
-// estado atual. Acrescentar um estado novo não muda uma linha aqui.
+// Context: nenhum if de status. Acrescentar um estado novo não muda uma linha aqui.
 class Pedido {
 
     private final String codigo;
@@ -146,8 +134,6 @@ class Pedido {
         trilha.add("novo");
     }
 
-    // Chamado pelos estados. Em um sistema real seria de visibilidade restrita ao pacote, para
-    // que só os estados pudessem provocar transições.
     void mudarPara(EstadoPedido novoEstado) {
         System.out.println("  [" + estado.nome() + " -> " + novoEstado.nome() + "]");
         this.estado = novoEstado;
@@ -183,7 +169,7 @@ class Pedido {
     }
 }
 
-// Classe Cliente
+// Cliente
 class CicloDeVidaPedido {
 
     public static void main(String[] args) {
@@ -191,28 +177,23 @@ class CicloDeVidaPedido {
         feliz.pagar();
         feliz.enviar();
         feliz.entregar();
-        feliz.cancelar();     // recusado: entregue é terminal
+        feliz.cancelar();
         System.out.println("trilha: " + feliz.getTrilha());
 
         System.out.println("---");
 
         Pedido foraDeOrdem = new Pedido("PED-2");
-        foraDeOrdem.enviar();    // recusado: ainda não foi pago
-        foraDeOrdem.entregar();  // recusado
+        foraDeOrdem.enviar();
+        foraDeOrdem.entregar();
         foraDeOrdem.pagar();
-        foraDeOrdem.cancelar();  // permitido, e com estorno
-        foraDeOrdem.pagar();     // recusado: cancelado é terminal
+        foraDeOrdem.cancelar();
+        foraDeOrdem.pagar();
         System.out.println("trilha: " + foraDeOrdem.getTrilha());
         System.out.println("estado final: " + foraDeOrdem.getEstadoAtual());
     }
 }
 
-//State x Strategy: estruturalmente idênticos - um contexto que delega a um objeto trocável. As
-//diferenças são de intenção e de quem troca:
-//No Strategy, quem escolhe o algoritmo é o CLIENTE, de fora, e as estratégias não se conhecem.
-//No State, quem escolhe o próximo estado é o PRÓPRIO ESTADO, de dentro, e por isso os estados
-//conhecem uns aos outros e formam um grafo de transições.
-//
-//Variação comum: estados sem campos podem ser singletons ou constantes de enum, evitando criar um
-//objeto a cada transição. Em Java, um enum que implementa a interface de estado, com cada
-//constante sobrescrevendo os métodos, é uma forma bastante idiomática de escrever este padrão.
+//State x Strategy: estruturalmente idênticos. No Strategy quem escolhe é o CLIENTE, de fora, e as
+//estratégias não se conhecem. No State quem escolhe o próximo é o PRÓPRIO ESTADO, de dentro, e por
+//isso os estados se conhecem e formam um grafo de transições.
+//Estados sem campos podem ser constantes de enum, evitando criar um objeto a cada transição.

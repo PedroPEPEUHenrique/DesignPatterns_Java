@@ -1,24 +1,15 @@
-//GRASP - PURE FABRICATION (Fabricação Pura)
-
-//Problema: e quando seguir o Expert leva a um desenho ruim - com baixa coesão ou alto acoplamento?
-//Solução: atribua um conjunto altamente coeso de responsabilidades a uma classe ARTIFICIAL, que
-//não representa nada do domínio do problema. Ela é "fabricada" pelo projetista para servir ao
-//desenho, e não para espelhar o mundo real.
-
-//Suponha que a sua tarefa seja gravar um pedido no banco de dados.
-//Pelo Expert, quem tem os dados do pedido é a própria classe Pedido, então gravar seria
-//responsabilidade dela. Imagine o resultado: Pedido passaria a conhecer JDBC, SQL e transação;
-//perderia coesão (regra de negócio + persistência na mesma classe); ficaria acoplado à
-//infraestrutura; e nem seria reutilizável, porque a lógica de gravação em banco não é específica
-//de pedido.
-//É o caso em que se DESOBEDECE o Expert conscientemente.
+//GRASP - PURE FABRICATION
+//Problema: e quando seguir o Expert leva a um desenho ruim?
+//Solução: atribuir um conjunto coeso de responsabilidades a uma classe ARTIFICIAL, que não
+//representa nada do domínio.
+//Exemplo: pelo Expert, gravar o pedido seria responsabilidade do próprio Pedido, que tem os dados.
+//Mas isso o faria conhecer JDBC e transação, misturando negócio com persistência. É o caso em que
+//se DESOBEDECE o Expert conscientemente.
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-// DOMÍNIO - classes que existem no vocabulário do negócio.
 
 class ItemPedido {
     private final String sku;
@@ -44,8 +35,7 @@ class ItemPedido {
     }
 }
 
-// Pedido continua sendo APENAS pedido: sabe calcular o seu total e validar suas próprias regras.
-// Nenhuma linha de SQL, de e-mail ou de arquivo aqui dentro.
+// Pedido continua sendo APENAS pedido: nenhuma linha de SQL, e-mail ou arquivo aqui dentro.
 class Pedido {
 
     private final String codigo;
@@ -83,9 +73,9 @@ class Pedido {
     }
 }
 
-// FABRICAÇÃO PURA 1 - Repositório
-// "PedidoRepository" não existe no negócio: nenhum usuário fala em repositório. Foi inventado para
-// concentrar a persistência de pedidos num lugar coeso, mantendo Pedido limpo.
+// Fabricação pura 1 - Repositório
+// Nenhum usuário fala em "repositório": foi inventado para concentrar a persistência num lugar
+// coeso, mantendo Pedido limpo.
 interface PedidoRepository {
 
     void salvar(Pedido pedido);
@@ -122,10 +112,9 @@ class PedidoRepositoryEmMemoria implements PedidoRepository {
     }
 }
 
-// FABRICAÇÃO PURA 2 - Serviço de domínio
-// Uma regra que envolve MAIS DE UMA entidade e não pertence naturalmente a nenhuma delas. Colocar
-// o cálculo de frete em Pedido o acoplaria à tabela de transportadoras; colocar na transportadora
-// o acoplaria a pedido. A saída é uma terceira classe, também fabricada.
+// Fabricação pura 2 - Serviço de domínio
+// Regra que envolve MAIS DE UMA entidade e não pertence a nenhuma: o frete em Pedido o acoplaria à
+// tabela de transportadoras, e na transportadora o acoplaria a pedido.
 class CalculoFreteService {
 
     private final Map<String, Integer> tabelaPorRegiao = Map.of(
@@ -137,13 +126,12 @@ class CalculoFreteService {
         for (ItemPedido item : pedido.getItens()) {
             porItem += item.getQuantidade() * 150;
         }
-        return pedido.totalEmCentavos() > 30000 ? 0 : base + porItem;   // frete grátis acima de R$ 300
+        return pedido.totalEmCentavos() > 30000 ? 0 : base + porItem;
     }
 }
 
-// FABRICAÇÃO PURA 3 - Conversor / Assembler
-// Traduz o objeto de domínio para o formato de saída. Sem ela, Pedido teria um método "paraJson()"
-// e passaria a conhecer o formato do canal - baixa coesão de novo.
+// Fabricação pura 3 - Assembler
+// Sem ela, Pedido teria um "paraJson()" e passaria a conhecer o formato do canal.
 class PedidoJsonAssembler {
 
     public String paraJson(Pedido pedido) {
@@ -160,9 +148,7 @@ class PedidoJsonAssembler {
     }
 }
 
-// FABRICAÇÃO PURA 4 - Utilitário sem estado
-// O caso mais simples e mais comum. java.lang.Math é exatamente isso: não existe "um Math" no
-// mundo, é uma classe fabricada para agrupar operações coesas.
+// Fabricação pura 4 - utilitário sem estado. java.lang.Math é exatamente isso.
 final class Dinheiro {
 
     private Dinheiro() {
@@ -173,7 +159,6 @@ final class Dinheiro {
     }
 }
 
-// Classe Cliente
 class FabricacaoPura {
 
     public static void main(String[] args) {
@@ -181,10 +166,8 @@ class FabricacaoPura {
         pedido.adicionar("TEC-001", 1, 25000);
         pedido.adicionar("MOU-002", 2, 8000);
 
-        // O domínio calcula o que é dele.
         System.out.println("total: " + Dinheiro.formatar(pedido.totalEmCentavos()));
 
-        // As fabricações puras cuidam do resto, cada uma no seu assunto.
         PedidoRepository repositorio = new PedidoRepositoryEmMemoria();
         repositorio.salvar(pedido);
 
@@ -205,13 +188,9 @@ class FabricacaoPura {
     }
 }
 
-//Nomes que costumam indicar fabricação pura: Repository, DAO, Service, Factory, Assembler,
-//Validator, Mapper, Adapter, Controller. Nenhum deles existe no vocabulário do usuário.
-//
-//O risco: usar fabricação pura em excesso esvazia o domínio. Se TODA regra vira um "Service" e as
-//entidades ficam só com getters e setters, voltamos ao modelo anêmico - o problema que o Expert
-//queria resolver. A ordem certa é: tente o Expert primeiro; só fabrique uma classe quando seguir o
-//Expert prejudicar de fato a coesão ou o acoplamento.
-//
-//Praticamente todo padrão do GoF é uma fabricação pura, porque nenhum deles representa um conceito
-//do domínio do problema - são invenções que servem ao desenho.
+//Nomes que indicam fabricação pura: Repository, DAO, Service, Factory, Assembler, Validator,
+//Mapper, Adapter, Controller - nenhum existe no vocabulário do usuário.
+//O risco: usá-la em excesso esvazia o domínio. Se TODA regra vira um "Service" e as entidades
+//ficam só com getters, voltamos ao modelo anêmico. Tente o Expert primeiro; fabrique só quando
+//segui-lo prejudicar de fato a coesão ou o acoplamento.
+//Praticamente todo padrão do GoF é uma fabricação pura - nenhum representa conceito do domínio.

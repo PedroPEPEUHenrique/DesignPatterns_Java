@@ -1,17 +1,8 @@
-//Suponha que a sua tarefa seja calcular o frete de um pedido. As modalidades são:
-//Econômico - por faixa de peso, prazo longo
-//Expresso - por peso e distância, com taxa fixa
-//Retirada na loja - sempre zero
-//Transportadora parceira - tabela própria por região
-
-//Imagine o cálculo num único método com um switch sobre a modalidade. Ele cresce a cada
-//modalidade nova, mistura quatro regras diferentes no mesmo corpo, e testar uma delas exige
-//instanciar o pedido inteiro e forçar o caminho do switch. Uma modalidade nova sempre reabre a
-//mesma classe - o oposto do princípio aberto/fechado.
-
-//O Strategy resolve o problema de definir uma FAMÍLIA DE ALGORITMOS, encapsular cada um deles e
-//torná-los intercambiáveis, permitindo que o algoritmo varie independentemente dos clientes que
-//o utilizam.
+//Calcular o frete de um pedido em quatro modalidades: econômico, expresso, retirada na loja e
+//transportadora parceira. Num único método com switch, quatro regras diferentes se misturam no
+//mesmo corpo e cada modalidade nova reabre a mesma classe.
+//O Strategy define uma FAMÍLIA DE ALGORITMOS, encapsula cada um e os torna intercambiáveis,
+//permitindo que o algoritmo varie independentemente dos clientes que o utilizam.
 
 import java.util.HashMap;
 import java.util.Map;
@@ -46,24 +37,21 @@ class Encomenda {
     }
 }
 
-// Padrão Strategy - a interface Strategy
-// Um único método: é o algoritmo isolado. Repare que a assinatura é a mesma para todos, e que ela
-// recebe tudo de que qualquer estratégia possa precisar - definir bem esse contrato é a parte
-// mais delicada do padrão.
+// Strategy
+// A assinatura é a mesma para todos e recebe tudo de que qualquer estratégia possa precisar -
+// definir bem esse contrato é a parte mais delicada do padrão.
 interface EstrategiaFrete {
 
     int calcularEmCentavos(Encomenda encomenda);
 
     String nome();
 
-    // Java 8+ permite método default na interface: dá para acrescentar comportamento comum sem
-    // precisar de uma classe abstrata intermediária.
     default int prazoEmDias() {
         return 10;
     }
 }
 
-// ESTRATÉGIAS CONCRETAS - cada uma isolada, testável sozinha e sem saber que as outras existem.
+// Estratégias concretas: cada uma isolada, testável sozinha e sem saber que as outras existem.
 
 class FreteEconomico implements EstrategiaFrete {
 
@@ -160,8 +148,7 @@ class FreteTransportadoraParceira implements EstrategiaFrete {
     }
 }
 
-// Estratégia que COMPÕE outras: escolhe a mais barata entre as candidatas. Como ela também
-// implementa EstrategiaFrete, o contexto não a distingue de uma estratégia simples.
+// Estratégia que COMPÕE outras: o contexto não a distingue de uma estratégia simples.
 class FreteMaisBarato implements EstrategiaFrete {
 
     private final EstrategiaFrete[] candidatas;
@@ -191,9 +178,7 @@ class FreteMaisBarato implements EstrategiaFrete {
     }
 }
 
-// Padrão Strategy - o Context
-// Nenhum if, nenhum switch, nenhuma regra de cálculo. Ele só sabe que existe uma estratégia e a
-// chama. Uma modalidade nova é uma classe nova - esta aqui não muda.
+// Context: nenhum if, nenhuma regra de cálculo. Uma modalidade nova não muda esta classe.
 class CalculadoraFrete {
 
     private EstrategiaFrete estrategia;
@@ -233,9 +218,8 @@ class CalculadoraFrete {
                 new FreteEconomico(), new FreteExpresso(), new FreteTransportadoraParceira()));
         calculadora.cotar(encomenda);
 
-        // Uma estratégia pode ser uma lambda quando a interface tem só um método abstrato.
-        // Aqui não dá, porque EstrategiaFrete declara dois - é um exemplo de como o desenho da
-        // interface afeta a ergonomia do padrão.
+        // Não cabe lambda aqui porque a interface declara dois métodos abstratos - exemplo de como
+        // o desenho da interface afeta a ergonomia do padrão.
         System.out.println("promoção pontual:");
         calculadora.setEstrategia(new EstrategiaFrete() {
             @Override
@@ -252,11 +236,7 @@ class CalculadoraFrete {
     }
 }
 
-//Strategy x State: a estrutura é a mesma, a intenção não. No Strategy quem escolhe é o cliente,
-//de fora, e as estratégias se ignoram mutuamente. No State quem escolhe o próximo é o próprio
-//estado, de dentro, e os estados formam um grafo de transições.
-//Strategy x Template Method: os dois variam parte de um algoritmo. O Template Method faz isso por
-//HERANÇA, fixando o esqueleto na superclasse; o Strategy faz por COMPOSIÇÃO, trocando o objeto
-//inteiro - o que permite trocar em tempo de execução e evita o acoplamento da herança.
-//
+//Strategy x State: no Strategy quem escolhe é o cliente, de fora, e as estratégias se ignoram.
+//Strategy x Template Method: o Template Method varia por HERANÇA, com o esqueleto fixo na
+//superclasse; o Strategy varia por COMPOSIÇÃO, trocável em tempo de execução.
 //Na biblioteca padrão: o Comparator passado a Collections.sort() é uma estratégia de ordenação.

@@ -1,22 +1,13 @@
-//Suponha que a sua tarefa seja implementar desfazer/refazer em um editor de textos. O documento
-//possui:
-//Conteúdo
-//Posição do cursor
-//Trecho selecionado
-
-//Imagine a solução em que a classe de histórico lê os campos do documento para guardar cópias.
-//Para isso o documento precisaria expor getters e setters de tudo, inclusive do que é detalhe
-//interno - o encapsulamento morre para que o histórico funcione. E se um campo novo for criado e
-//alguém esquecer de incluí-lo no histórico, o desfazer passa a restaurar um estado inconsistente.
-
-//O Memento resolve o problema de capturar e externalizar o estado interno de um objeto, SEM violar
-//o seu encapsulamento, de modo que ele possa ser restaurado a esse estado depois.
+//Implementar desfazer/refazer em um editor. Se a classe de histórico ler os campos do documento
+//para copiá-los, o documento precisa expor tudo o que tem - o encapsulamento morre para que o
+//histórico funcione.
+//O Memento captura e externaliza o estado interno de um objeto SEM violar o seu encapsulamento,
+//de modo que ele possa ser restaurado depois.
 
 import java.util.ArrayDeque;
 import java.util.Deque;
 
-// Padrão Memento - o Originator
-// É quem tem o estado que interessa. Só ele cria mementos e só ele sabe lê-los.
+// Originator: só ele cria mementos e só ele sabe lê-los.
 class Documento {
 
     private String conteudo = "";
@@ -43,15 +34,11 @@ class Documento {
         selecao = "";
     }
 
-    // Padrão Memento - a criação do memento
-    // O originator entrega um instantâneo completo. Note que ele não precisa expor NENHUM getter
-    // de conteudo, posicaoCursor ou selecao para isso funcionar.
+    // Entrega um instantâneo completo sem expor NENHUM getter dos campos internos.
     public Instantaneo salvar() {
         return new Instantaneo(conteudo, posicaoCursor, selecao);
     }
 
-    // Padrão Memento - a restauração
-    // Só o originator consegue ler os campos do memento, porque a classe é interna a ele.
     public void restaurar(Instantaneo instantaneo) {
         this.conteudo = instantaneo.conteudo;
         this.posicaoCursor = instantaneo.posicaoCursor;
@@ -63,11 +50,8 @@ class Documento {
                            + " | seleção: \"" + selecao + "\"");
     }
 
-    // Padrão Memento - o Memento
-    // É IMUTÁVEL (todos os campos final, nenhum setter): um instantâneo que muda depois de tirado
-    // não é instantâneo. E é uma classe aninhada com campos privados, de modo que o cuidador
-    // consegue guardá-lo e devolvê-lo, mas não consegue inspecioná-lo nem alterá-lo. Essa
-    // assimetria de acesso é exatamente o que preserva o encapsulamento.
+    // Memento: imutável e com campos privados. O cuidador consegue guardá-lo e devolvê-lo, mas
+    // não inspecioná-lo - essa assimetria de acesso é o que preserva o encapsulamento.
     public static final class Instantaneo {
         private final String conteudo;
         private final int posicaoCursor;
@@ -79,8 +63,7 @@ class Documento {
             this.selecao = selecao;
         }
 
-        // Interface ESTREITA: o único acesso público é um rótulo para a tela de histórico.
-        // Nada aqui revela a estrutura interna do documento.
+        // Interface ESTREITA: um rótulo para a tela de histórico, nada da estrutura interna.
         public String descricao() {
             return "\"" + resumo() + "\"";
         }
@@ -91,9 +74,7 @@ class Documento {
     }
 }
 
-// Padrão Memento - o Caretaker (cuidador)
-// Guarda os mementos e decide QUANDO restaurar. Não sabe - e não pode saber - o que há dentro
-// deles. Para o cuidador, um memento é uma caixa opaca.
+// Caretaker: guarda os mementos e decide QUANDO restaurar, sem saber o que há dentro deles.
 class HistoricoEdicao {
 
     private final Documento documento;
@@ -106,13 +87,12 @@ class HistoricoEdicao {
         this.limite = limite;
     }
 
-    // Deve ser chamado ANTES de cada alteração: o que se guarda é o estado que se quer voltar.
+    // Chamado ANTES de cada alteração: guarda-se o estado ao qual se quer voltar.
     public void registrar() {
         pilhaDesfazer.push(documento.salvar());
         pilhaRefazer.clear();   // um caminho novo invalida o "refazer" anterior
 
-        // Mementos ocupam memória. Um editor real limita a profundidade do histórico ou grava
-        // apenas o DELTA entre estados, em vez do estado completo.
+        // Mementos ocupam memória: um editor real limita a profundidade ou grava só o delta.
         if (pilhaDesfazer.size() > limite) {
             pilhaDesfazer.removeLast();
         }
@@ -141,14 +121,13 @@ class HistoricoEdicao {
     public void listar() {
         System.out.println("  histórico (" + pilhaDesfazer.size() + " estados):");
         for (Documento.Instantaneo instantaneo : pilhaDesfazer) {
-            // O cuidador só consegue chamar a interface estreita. Tentar acessar
-            // instantaneo.conteudo aqui nem compila - o campo é privado da classe aninhada.
+            // Acessar instantaneo.conteudo aqui nem compila: o campo é privado da classe aninhada.
             System.out.println("    " + instantaneo.descricao());
         }
     }
 }
 
-// Classe Cliente
+// Cliente
 class EditorComHistorico {
 
     public static void main(String[] args) {
@@ -182,10 +161,6 @@ class EditorComHistorico {
     }
 }
 
-//Memento x Command: os dois viabilizam desfazer, por caminhos opostos. O Memento guarda o ESTADO
-//e volta a ele; o Command guarda a OPERAÇÃO e a reverte. Guardar estado é mais simples e sempre
-//correto, mas custa memória; reverter operação é barato, porém exige que toda operação tenha
-//inversa - o que nem sempre é verdade.
-//
-//Onde isso aparece: pontos de salvamento (savepoints) de transações de banco, snapshots de
-//máquinas virtuais e o estado de sessão serializado de aplicações web.
+//Memento x Command: os dois viabilizam desfazer por caminhos opostos. O Memento guarda o ESTADO e
+//volta a ele - simples e sempre correto, mas custa memória. O Command guarda a OPERAÇÃO e a
+//reverte - barato, porém exige que toda operação tenha inversa.

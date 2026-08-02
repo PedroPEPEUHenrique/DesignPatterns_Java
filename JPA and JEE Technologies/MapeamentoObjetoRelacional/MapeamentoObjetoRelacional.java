@@ -1,18 +1,9 @@
 //JPA - MAPEAMENTO OBJETO-RELACIONAL
-
-//ATENÇÃO: este arquivo é material de estudo e NÃO compila sozinho. Ele depende da API
-//jakarta.persistence-api no classpath. Em projetos antigos (Java EE 8 e anteriores) o pacote
-//chama-se javax.persistence; a partir do Jakarta EE 9 passou a ser jakarta.persistence, e essa é
-//a única diferença na maior parte do código.
-
-//O problema que a JPA resolve: o modelo ORIENTADO A OBJETOS e o modelo RELACIONAL não se
-//encaixam. Objetos têm herança, referências, identidade e navegação; tabelas têm colunas, chaves
-//estrangeiras e junções. Essa distância é chamada de "impedance mismatch", e escrevê-la à mão em
-//JDBC significa repetir INSERT, UPDATE, SELECT e a conversão de cada campo em cada classe.
-
-//A JPA é uma ESPECIFICAÇÃO (Hibernate, EclipseLink e OpenJPA são implementações dela) que resolve
-//isso por METADADOS: você anota as classes e o provedor gera o SQL. É Protected Variations
-//aplicado à camada de dados - o código de domínio fica protegido do dialeto SQL de cada banco.
+//NÃO compila sem jakarta.persistence-api no classpath. Em Java EE 8 e anteriores o pacote é
+//javax.persistence.
+//O modelo orientado a objetos e o relacional não se encaixam ("impedance mismatch"). A JPA é uma
+//especificação (Hibernate, EclipseLink) que resolve isso por METADADOS: você anota as classes e o
+//provedor gera o SQL.
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -42,24 +33,18 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
-// ENTIDADE - a unidade básica do mapeamento.
-// Requisitos que a especificação impõe e que costumam cair em prova:
-//  1. anotada com @Entity (ou declarada no orm.xml)
-//  2. construtor SEM ARGUMENTOS, público ou protegido - o provedor instancia por reflexão
-//  3. um identificador (@Id)
-//  4. a classe não pode ser final, nem podem ser final os métodos/atributos persistentes -
-//     o provedor precisa gerar uma subclasse proxy para o carregamento preguiçoso
+// Requisitos que a especificação impõe a uma entidade:
+//  1. @Entity  2. construtor SEM ARGUMENTOS  3. um @Id
+//  4. a classe não pode ser final - o provedor gera uma subclasse proxy para o carregamento LAZY
 @Entity
 @Table(name = "cliente")
 class Cliente {
 
-    // @Id define a chave primária, que é a IDENTIDADE da entidade para o banco.
-    // @GeneratedValue delega a geração ao banco. As estratégias:
-    //  IDENTITY - coluna auto-incremento; simples, mas impede o batch de inserts, porque o
-    //             provedor precisa do INSERT imediato para saber o id.
-    //  SEQUENCE - sequence do banco; é a preferida quando o banco suporta (PostgreSQL, Oracle).
-    //  TABLE    - tabela de controle; portável, porém lenta e com contenção.
-    //  AUTO     - o provedor escolhe.
+    // Estratégias de @GeneratedValue:
+    //  IDENTITY - auto-incremento; simples, mas impede batch de inserts
+    //  SEQUENCE - preferida quando o banco suporta (PostgreSQL, Oracle)
+    //  TABLE    - portável, porém lenta e com contenção
+    //  AUTO     - o provedor escolhe
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -67,54 +52,45 @@ class Cliente {
     @Column(name = "nome_completo", nullable = false, length = 120)
     private String nome;
 
-    // unique = true gera a constraint no DDL, mas NÃO é validado pela JPA em memória: a violação
-    // só aparece como exceção do banco no momento do flush.
+    // unique = true gera a constraint no DDL, mas NÃO é validado em memória: a violação só aparece
+    // como exceção do banco no flush.
     @Column(nullable = false, unique = true, length = 11)
     private String cpf;
 
-    // Enum: SEMPRE use EnumType.STRING. O padrão é ORDINAL, que grava a POSIÇÃO da constante -
-    // inserir um valor novo no meio do enum corrompe silenciosamente todos os registros gravados.
+    // SEMPRE EnumType.STRING. O padrão é ORDINAL, que grava a POSIÇÃO - inserir um valor no meio do
+    // enum corrompe silenciosamente todos os registros gravados.
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private CategoriaCliente categoria = CategoriaCliente.COMUM;
 
-    // Tipos de data e hora do java.time são mapeados nativamente desde a JPA 2.2. Em código legado
-    // aparecem java.util.Date com @Temporal(TemporalType.DATE|TIME|TIMESTAMP).
     @Column(name = "data_nascimento")
     private LocalDate dataNascimento;
 
     @Column(name = "criado_em", updatable = false)
     private LocalDateTime criadoEm = LocalDateTime.now();
 
-    // @Embedded incorpora um objeto de valor NAS COLUNAS DA PRÓPRIA TABELA. Não há tabela nem id
-    // para Endereco - é a forma de ter alta coesão no modelo de objetos sem criar uma tabela a mais.
+    // @Embedded incorpora um objeto de valor NAS COLUNAS DA PRÓPRIA TABELA.
     @Embedded
     private Endereco endereco;
 
-    // Um cliente tem muitos pedidos.
-    // mappedBy diz que o DONO do relacionamento é o outro lado (o campo "cliente" em Pedido). O
-    // dono é quem tem a chave estrangeira e é o único lado que o provedor observa para gravar.
-    // Esquecer o mappedBy faz a JPA criar uma tabela de junção desnecessária.
-    // cascade = ALL propaga persist/merge/remove aos filhos.
-    // orphanRemoval = true apaga o filho ao ser removido da coleção - diferente de CascadeType.REMOVE,
-    // que só age quando o PAI é removido.
+    // mappedBy diz que o DONO é o outro lado (o campo "cliente" em Pedido) - o dono tem a chave
+    // estrangeira e é o único lado que o provedor observa para gravar.
+    // orphanRemoval apaga o filho ao sair da coleção; CascadeType.REMOVE só age quando o PAI é
+    // removido.
     @OneToMany(mappedBy = "cliente",
                cascade = CascadeType.ALL,
                orphanRemoval = true,
                fetch = FetchType.LAZY)
     private List<Pedido> pedidos = new ArrayList<>();
 
-    // Relacionamento um-para-um. optional = false gera NOT NULL na FK.
     @OneToOne(mappedBy = "cliente", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private PerfilCredito perfilCredito;
 
-    // Bloqueio OTIMISTA: o provedor acrescenta "AND versao = ?" ao UPDATE e incrementa o campo.
-    // Se outra transação já alterou a linha, nenhuma linha é afetada e o provedor lança
-    // OptimisticLockException. É a proteção contra o "lost update" sem travar registros.
+    // Bloqueio OTIMISTA: o provedor acrescenta "AND versao = ?" ao UPDATE. Se outra transação já
+    // alterou a linha, lança OptimisticLockException - proteção contra "lost update" sem travar.
     @Version
     private Integer versao;
 
-    // Construtor sem argumentos, exigido pela especificação.
     protected Cliente() {
     }
 
@@ -123,11 +99,8 @@ class Cliente {
         this.cpf = cpf;
     }
 
-    // MÉTODO DE SINCRONIZAÇÃO DE RELACIONAMENTO BIDIRECIONAL.
-    // A JPA não mantém os dois lados sincronizados sozinha. Se você só fizer
-    // cliente.getPedidos().add(pedido), o campo pedido.cliente fica nulo e a FK vai nula para o
-    // banco. Concentrar os dois lados em um método é a forma de não esquecer - e é o Creator do
-    // GRASP: quem agrega é quem gerencia.
+    // A JPA NÃO sincroniza os dois lados sozinha: só cliente.getPedidos().add(pedido) deixa
+    // pedido.cliente nulo e a FK vai nula para o banco.
     public void adicionarPedido(Pedido pedido) {
         pedidos.add(pedido);
         pedido.setCliente(this);
@@ -170,12 +143,8 @@ class Cliente {
         this.endereco = endereco;
     }
 
-    // equals/hashCode em entidades é um assunto delicado:
-    //  - usar o id gerado quebra, porque ele é nulo antes do persist e o objeto muda de hash
-    //    depois de entrar num HashSet;
-    //  - usar todos os campos quebra quando qualquer um deles muda.
-    // A recomendação usual é usar uma chave de NEGÓCIO imutável (aqui o CPF) ou um UUID atribuído
-    // pela aplicação antes do persist.
+    // equals/hashCode com o id gerado quebra (nulo antes do persist, muda de hash depois); com
+    // todos os campos também quebra. Use chave de NEGÓCIO imutável ou UUID atribuído pela aplicação.
     @Override
     public boolean equals(Object outro) {
         if (this == outro) {
@@ -197,10 +166,8 @@ enum CategoriaCliente {
     COMUM, VIP, CORPORATIVO
 }
 
-// OBJETO DE VALOR (@Embeddable)
-// Não tem identidade própria: é identificado pelo seu conteúdo e vive dentro da tabela do dono.
-// É o mesmo conceito de Value Object do DDD e ajuda muito a coesão - sem ele, os cinco campos de
-// endereço ficariam soltos dentro de Cliente.
+// @Embeddable: sem identidade própria, identificado pelo conteúdo e gravado na tabela do dono.
+// É o Value Object do DDD - sem ele, os cinco campos de endereço ficariam soltos em Cliente.
 @Embeddable
 class Endereco {
 
@@ -246,10 +213,9 @@ class Pedido {
     @Column(nullable = false, unique = true, length = 20)
     private String codigo;
 
-    // LADO DONO do relacionamento: é aqui que fica a coluna de chave estrangeira.
-    // ATENÇÃO ao fetch: em @ManyToOne e @OneToOne o padrão da especificação é EAGER, e isso é uma
-    // das principais causas de lentidão - carregar um pedido traz o cliente junto, sempre.
-    // A prática recomendada é declarar LAZY em tudo e trazer o que precisa com JOIN FETCH.
+    // Lado DONO: aqui fica a coluna de chave estrangeira.
+    // ATENÇÃO: em @ManyToOne e @OneToOne o padrão da especificação é EAGER, uma das principais
+    // causas de lentidão. Declare LAZY e traga o necessário com JOIN FETCH.
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "cliente_id", nullable = false)
     private Cliente cliente;
@@ -258,10 +224,8 @@ class Pedido {
     @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ItemPedido> itens = new ArrayList<>();
 
-    // MUITOS-PARA-MUITOS com tabela de junção.
-    // Na prática, quase sempre é melhor transformar a junção em uma ENTIDADE própria: assim que o
-    // negócio pedir um atributo no relacionamento (data de aplicação, valor concedido), o
-    // @ManyToMany não serve mais e a migração é dolorosa.
+    // Na prática é quase sempre melhor transformar a junção em ENTIDADE própria: assim que o
+    // negócio pedir um atributo no relacionamento, o @ManyToMany não serve mais.
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "pedido_cupom",
                joinColumns = @JoinColumn(name = "pedido_id"),
@@ -282,8 +246,7 @@ class Pedido {
         this.codigo = codigo;
     }
 
-    // Information Expert: quem tem os itens calcula o total. A regra de negócio permanece na
-    // entidade - a JPA não obriga a esvaziá-la em getters e setters.
+    // A JPA não obriga a esvaziar a entidade em getters e setters: a regra de negócio permanece.
     BigDecimal totalEmReais() {
         return itens.stream()
                     .map(ItemPedido::subtotalEmReais)
@@ -343,8 +306,8 @@ class ItemPedido {
     @Column(nullable = false)
     private Integer quantidade;
 
-    // Valor monetário: use BigDecimal com precision/scale, NUNCA double. Ponto flutuante binário
-    // não representa 0,10 exatamente e o erro se acumula a cada soma.
+    // Valor monetário: BigDecimal com precision/scale, NUNCA double - ponto flutuante binário não
+    // representa 0,10 exatamente e o erro se acumula.
     @Column(name = "preco_unitario", nullable = false, precision = 19, scale = 2)
     private BigDecimal precoUnitario;
 
@@ -440,16 +403,12 @@ class PerfilCredito {
     }
 }
 
-// HERANÇA - o ponto em que o descompasso objeto-relacional fica mais evidente, porque tabelas não
-// têm herança. As três estratégias e seus custos:
-//
-// SINGLE_TABLE (padrão) - uma tabela para toda a hierarquia, com uma coluna discriminadora.
-//   É a mais rápida (nenhuma junção), mas as colunas das subclasses precisam aceitar NULL, o que
-//   impede constraints NOT NULL nos campos específicos.
-// JOINED - uma tabela por classe, ligadas pela PK. Modelo normalizado e com integridade completa,
-//   ao custo de uma junção por nível de herança.
-// TABLE_PER_CLASS - uma tabela completa por classe concreta. Evita junções na leitura de um tipo,
-//   mas consultas polimórficas viram UNION e a geração de id fica limitada (IDENTITY não serve).
+// HERANÇA - tabelas não têm herança. As três estratégias:
+//  SINGLE_TABLE (padrão) - uma tabela e uma coluna discriminadora; a mais rápida, mas as colunas
+//    das subclasses precisam aceitar NULL, o que impede constraints NOT NULL
+//  JOINED - uma tabela por classe, ligadas pela PK; normalizado, ao custo de uma junção por nível
+//  TABLE_PER_CLASS - uma tabela por classe concreta; consultas polimórficas viram UNION e a
+//    geração de id fica limitada (IDENTITY não serve)
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED)
 @Table(name = "pagamento")
@@ -469,8 +428,7 @@ abstract class Pagamento {
     protected Pagamento() {
     }
 
-    // Polimorfismo (GRASP) preservado no modelo persistente: cada forma de pagamento sabe a sua
-    // própria taxa, sem nenhum switch por tipo.
+    // Polimorfismo preservado no modelo persistente: nenhum switch por tipo.
     abstract BigDecimal taxaEmReais();
 
     BigDecimal getValor() {
@@ -513,22 +471,10 @@ class PagamentoPix extends Pagamento {
     }
 }
 
-//RESUMO DAS ANOTAÇÕES DE MAPEAMENTO
-//@Entity, @Table                        - a classe vira tabela
-//@Id, @GeneratedValue                   - chave primária e sua geração
-//@Column                                - nome, tamanho, nulidade, precisão
-//@Embeddable, @Embedded, @AttributeOverride - objetos de valor nas colunas do dono
-//@Enumerated(EnumType.STRING)           - enum como texto (nunca ORDINAL)
-//@Temporal                              - datas do java.util (desnecessário com java.time)
-//@Transient                             - campo que NÃO deve ser persistido
-//@Lob                                   - textos e binários grandes
-//@OneToOne, @ManyToOne, @OneToMany, @ManyToMany - relacionamentos
-//@JoinColumn, @JoinTable, mappedBy      - onde fica a FK e quem é o dono
-//@Inheritance, @DiscriminatorColumn     - estratégia de herança
-//@Version                               - bloqueio otimista
-//@NamedQuery                            - JPQL nomeada, validada na subida da aplicação
+//Outras anotações: @Transient (não persistir), @Lob (textos e binários grandes),
+//@AttributeOverride (renomear colunas de um @Embeddable), @DiscriminatorColumn, @NamedQuery.
 //
-//As três armadilhas mais comuns em prova e em produção:
+//As três armadilhas mais comuns:
 //1. EnumType.ORDINAL (o padrão) corrompendo dados quando o enum muda.
 //2. @ManyToOne EAGER por padrão, trazendo meia base junto em cada consulta.
 //3. Relacionamento bidirecional sem método de sincronização, gravando FK nula.

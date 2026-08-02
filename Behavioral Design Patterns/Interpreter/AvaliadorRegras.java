@@ -1,19 +1,13 @@
-//Suponha que a sua tarefa seja permitir que a área de negócio configure as regras de desconto sem
-//pedir alteração de código. As regras são expressões como:
-//  valorPedido > 10000 E clienteVip
-//  primeiraCompra OU (valorPedido > 5000 E NAO clienteInadimplente)
-
-//Imagine cada regra virando um if dentro do serviço de pedidos. Uma regra nova é um deploy novo,
-//e a lógica combinada fica espalhada em condicionais que ninguém consegue mais ler.
-
-//O Interpreter resolve o problema de, dada uma linguagem, definir uma representação para a sua
-//gramática junto com um interpretador que usa essa representação para interpretar sentenças da
-//linguagem. Cada regra da gramática vira uma CLASSE, e uma expressão vira uma ÁRVORE de objetos.
+//Permitir que a área de negócio configure regras de desconto sem alteração de código, no formato
+//"valorPedido > 10000 E clienteVip". Cada regra virando um if no serviço significa um deploy por
+//regra nova.
+//O Interpreter define uma representação para a gramática de uma linguagem junto com um
+//interpretador de suas sentenças: cada regra vira uma CLASSE e uma expressão vira uma ÁRVORE.
 
 import java.util.HashMap;
 import java.util.Map;
 
-// O CONTEXTO - guarda o estado sobre o qual a expressão é avaliada. É passado a toda a árvore.
+// Contexto: o estado sobre o qual a expressão é avaliada, passado a toda a árvore.
 class ContextoRegra {
     private final Map<String, Boolean> fatos = new HashMap<>();
     private final Map<String, Integer> numeros = new HashMap<>();
@@ -37,17 +31,14 @@ class ContextoRegra {
     }
 }
 
-// Padrão Interpreter - a AbstractExpression
-// Uma única operação: interpretar-se dentro de um contexto. Note que a estrutura é um Composite -
-// expressões terminais são folhas e as não terminais são nós internos.
+// AbstractExpression: a estrutura é um Composite - terminais são folhas, não terminais são nós.
 interface Expressao {
     boolean interpretar(ContextoRegra contexto);
 
     String emTexto();
 }
 
-// EXPRESSÕES TERMINAIS - folhas da árvore. Não contêm outras expressões e resolvem consultando
-// diretamente o contexto.
+// Expressões TERMINAIS: resolvem consultando diretamente o contexto.
 
 class Fato implements Expressao {
     private final String nome;
@@ -105,8 +96,7 @@ class Literal implements Expressao {
     }
 }
 
-// EXPRESSÕES NÃO TERMINAIS - nós internos. Contêm outras expressões e interpretam a si mesmas
-// combinando o resultado dos filhos. A recursão é o próprio mecanismo de avaliação.
+// Expressões NÃO TERMINAIS: contêm outras expressões; a recursão é o mecanismo de avaliação.
 
 class E implements Expressao {
     private final Expressao esquerda;
@@ -119,7 +109,6 @@ class E implements Expressao {
 
     @Override
     public boolean interpretar(ContextoRegra contexto) {
-        // Avaliação em curto-circuito, como no operador && da linguagem.
         return esquerda.interpretar(contexto) && direita.interpretar(contexto);
     }
 
@@ -167,9 +156,8 @@ class Nao implements Expressao {
     }
 }
 
-// O PARSER não faz parte do padrão - o Interpreter cuida da avaliação, não da análise sintática.
-// Este é um parser mínimo, em notação polonesa (prefixada), só para mostrar de onde a árvore vem
-// no mundo real: de um arquivo de configuração, de uma tela de administração ou de um banco.
+// O parser NÃO faz parte do padrão - o Interpreter cuida da avaliação, não da análise sintática.
+// Este é mínimo, em notação prefixada, só para mostrar de onde a árvore vem no mundo real.
 class ParserRegra {
 
     private final String[] tokens;
@@ -203,7 +191,7 @@ class ParserRegra {
     }
 }
 
-// Classe Cliente
+// Cliente
 class AvaliadorRegras {
 
     public void avaliar(String nomeRegra, Expressao regra, ContextoRegra contexto) {
@@ -220,11 +208,9 @@ class AvaliadorRegras {
 
         AvaliadorRegras avaliador = new AvaliadorRegras();
 
-        // Árvore montada em código: valorPedido > 10000 E clienteVip
         Expressao descontoVip = new E(new MaiorQue("valorPedido", 10000), new Fato("clienteVip"));
         avaliador.avaliar("desconto vip", descontoVip, pedido);
 
-        // Árvore mais profunda: primeiraCompra OU (valorPedido > 5000 E NAO clienteInadimplente)
         Expressao freteGratis = new Ou(
                 new Fato("primeiraCompra"),
                 new E(new MaiorQue("valorPedido", 5000), new Nao(new Fato("clienteInadimplente"))));
@@ -235,11 +221,10 @@ class AvaliadorRegras {
                 .analisar();
         avaliador.avaliar("frete grátis (do arquivo)", daConfiguracao, pedido);
 
-        // Trocar a regra é trocar o texto, sem recompilar nada.
         Expressao outraPolitica = new ParserRegra("E clienteVip NAO clienteInadimplente").analisar();
         avaliador.avaliar("atendimento prioritário", outraPolitica, pedido);
 
-        // A mesma regra sobre outro pedido: a árvore é reutilizável, o contexto é que muda.
+        // A árvore é reutilizável; o contexto é que muda.
         ContextoRegra outroPedido = new ContextoRegra()
                 .defineNumero("valorPedido", 300)
                 .defineFato("clienteVip", false);
@@ -247,8 +232,6 @@ class AvaliadorRegras {
     }
 }
 
-//Limites do padrão: ele só se paga quando a gramática é PEQUENA e ESTÁVEL. Com muitas regras
-//gramaticais, o número de classes explode e um gerador de parser (ANTLR, JavaCC) passa a valer
-//mais a pena. Por isso o Interpreter é o padrão do GoF menos usado no dia a dia.
-//Onde ele aparece: java.util.regex.Pattern, expressões de JPQL/Criteria API, e as especificações
-//de regra de negócio compostas (Specification pattern) são interpretadores.
+//Só se paga quando a gramática é PEQUENA e ESTÁVEL: com muitas regras o número de classes explode
+//e um gerador de parser (ANTLR, JavaCC) passa a valer mais. É o padrão do GoF menos usado.
+//Onde aparece: java.util.regex.Pattern, expressões de JPQL/Criteria e o Specification pattern.
