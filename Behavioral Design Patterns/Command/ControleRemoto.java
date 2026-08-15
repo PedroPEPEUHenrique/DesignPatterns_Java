@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 
-// Command
 interface Comando {
     void executar();
 
@@ -17,8 +16,6 @@ interface Comando {
 
     String descricao();
 }
-
-// Receivers: continuam classes de domínio comuns, não sabem que existem comandos.
 
 class Luz {
     private final String comodo;
@@ -69,8 +66,6 @@ class Som {
     }
 }
 
-// ConcreteCommand
-// Guarda o receiver, os argumentos e o estado anterior: é o comando que sabe reverter a si mesmo.
 class ComandoLigarLuz implements Comando {
     private final Luz luz;
     private boolean estadoAnterior;
@@ -183,7 +178,6 @@ class ComandoAjustarVolume implements Comando {
     }
 }
 
-// MacroComando: também implementa Comando, então o invoker não distingue um comando de uma cena.
 class Cena implements Comando {
     private final String nome;
     private final List<Comando> passos = new ArrayList<>();
@@ -207,7 +201,7 @@ class Cena implements Comando {
 
     @Override
     public void desfazer() {
-        // Ordem INVERSA: esquecer isso é o erro mais comum em macro comandos.
+
         for (int i = passos.size() - 1; i >= 0; i--) {
             passos.get(i).desfazer();
         }
@@ -219,7 +213,6 @@ class Cena implements Comando {
     }
 }
 
-// Null Object: evita o if (comando != null) espalhado pelo invoker.
 class ComandoVazio implements Comando {
 
     @Override
@@ -237,7 +230,6 @@ class ComandoVazio implements Comando {
     }
 }
 
-// Invoker: sabe disparar comandos e guardar o histórico, sem saber o que cada um faz.
 class ControleRemoto {
 
     private final Comando[] botoes = new Comando[6];
@@ -260,7 +252,6 @@ class ControleRemoto {
         historico.push(comando);
     }
 
-    // O histórico só é possível porque a requisição é um objeto que sobrevive à chamada.
     public void desfazerUltimo() {
         if (historico.isEmpty()) {
             System.out.println("nada a desfazer");
@@ -298,8 +289,3 @@ class ControleRemoto {
         controle.desfazerUltimo();
     }
 }
-
-//O que o Command habilita e um método direto não: desfazer/refazer, fila e agendamento, log e
-//replay (base de event sourcing e do log de transações de um banco).
-//Em Java, Runnable é a interface Command da biblioteca padrão - por isso um ExecutorService
-//aceita qualquer tarefa sem saber o que ela faz.

@@ -7,7 +7,6 @@
 import java.util.ArrayList;
 import java.util.List;
 
-// Implementor: vocabulário primitivo de desenho, pensado para ser implementado.
 interface RenderizadorRelatorio {
     void iniciarDocumento(String titulo);
 
@@ -104,8 +103,6 @@ class RenderizadorTextoPlano implements RenderizadorRelatorio {
     }
 }
 
-// Abstração
-// A PONTE é este campo: a abstração COMPÕE um renderizador em vez de herdar dele.
 abstract class Relatorio {
     protected final RenderizadorRelatorio renderizador;
 
@@ -129,7 +126,6 @@ abstract class Relatorio {
     protected abstract List<List<String>> linhas();
 }
 
-// Abstrações refinadas
 class RelatorioVendas extends Relatorio {
 
     RelatorioVendas(RenderizadorRelatorio renderizador) {
@@ -180,17 +176,12 @@ class RelatorioEstoque extends Relatorio {
     }
 }
 
-// Cliente
 class AplicacaoRelatorios {
 
     public static void main(String[] args) {
-        // Qualquer relatório combina com qualquer formato, sem nenhuma classe nova.
+
         System.out.println(new RelatorioVendas(new RenderizadorHtml()).gerar());
         System.out.println(new RelatorioVendas(new RenderizadorCsv()).gerar());
         System.out.println(new RelatorioEstoque(new RenderizadorTextoPlano()).gerar());
     }
 }
-
-//Bridge x Strategy: estruturalmente iguais. O Strategy troca um algoritmo dentro de uma classe; o
-//Bridge separa duas HIERARQUIAS inteiras que evoluem em ritmos diferentes, decisão tomada no
-//início do projeto e não como refatoração pontual.

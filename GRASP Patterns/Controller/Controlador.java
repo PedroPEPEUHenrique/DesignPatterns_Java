@@ -121,10 +121,6 @@ class ServicoPagamento {
     }
 }
 
-// O CONTROLADOR (de caso de uso)
-// Ele não calcula total (quem sabe é a Venda), não decide desconto (é o ProgramaFidelidade) e não
-// busca produto (é o Catálogo). Apenas delega, na ordem certa - um controlador que calcula vira
-// um God Object.
 class RegistrarVendaController {
 
     private final CatalogoProdutos catalogo;
@@ -139,7 +135,6 @@ class RegistrarVendaController {
         this.pagamento = pagamento;
     }
 
-    // Cada método público corresponde a UM evento de sistema do caso de uso.
     public void iniciarNovaVenda() {
         vendaAtual = new Venda();
         System.out.println("venda iniciada");
@@ -167,8 +162,6 @@ class RegistrarVendaController {
         return pagamento.cobrar(vendaAtual.totalEmCentavos(), meio);
     }
 
-    // Devolve dados prontos para exibição, e NÃO o objeto de domínio: se Venda mudar, a tela não
-    // quebra.
     public String resumoParaTela() {
         StringBuilder resumo = new StringBuilder();
         for (LinhaVenda linha : vendaAtual.getLinhas()) {
@@ -186,9 +179,6 @@ class RegistrarVendaController {
         }
     }
 }
-
-// Duas camadas de apresentação diferentes usando o MESMO controlador: é isso que prova que a regra
-// não vazou para a interface.
 
 class TelaCaixa {
 
@@ -243,9 +233,3 @@ class Controlador {
                 .postVenda();
     }
 }
-
-//Controlador de FACHADA (um para o sistema todo) serve quando há poucos eventos; por CASO DE USO
-//é o certo em sistemas grandes, para a fachada não virar um God Object.
-//Sintomas de "bloated controller": um único controlador para tudo, com estado que deveria estar no
-//domínio e que calcula em vez de delegar.
-//Na prática: é o C do MVC, o @RestController do Spring, o recurso JAX-RS de um endpoint.

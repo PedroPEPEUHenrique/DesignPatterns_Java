@@ -7,7 +7,6 @@
 import java.util.ArrayList;
 import java.util.List;
 
-// State
 interface EstadoPedido {
 
     void pagar(Pedido pedido);
@@ -21,8 +20,6 @@ interface EstadoPedido {
     String nome();
 }
 
-// Base que recusa tudo: cada estado concreto sobrescreve só o que PERMITE, então a lista de
-// transições válidas fica evidente na leitura de cada classe.
 abstract class EstadoBase implements EstadoPedido {
 
     @Override
@@ -55,7 +52,7 @@ class EstadoNovo extends EstadoBase {
     @Override
     public void pagar(Pedido pedido) {
         System.out.println("  pagamento capturado");
-        pedido.mudarPara(new EstadoPago());   // é o estado que decide a transição
+        pedido.mudarPara(new EstadoPago());
     }
 
     @Override
@@ -78,7 +75,6 @@ class EstadoPago extends EstadoBase {
         pedido.mudarPara(new EstadoEnviado());
     }
 
-    // Cancelar MUDA conforme o estado: aqui há estorno, no estado novo não.
     @Override
     public void cancelar(Pedido pedido) {
         System.out.println("  cancelamento com estorno do pagamento");
@@ -105,7 +101,6 @@ class EstadoEnviado extends EstadoBase {
     }
 }
 
-// Estados terminais: herdam tudo da base, ou seja, recusam qualquer transição.
 class EstadoEntregue extends EstadoBase {
 
     @Override
@@ -122,7 +117,6 @@ class EstadoCancelado extends EstadoBase {
     }
 }
 
-// Context: nenhum if de status. Acrescentar um estado novo não muda uma linha aqui.
 class Pedido {
 
     private final String codigo;
@@ -169,7 +163,6 @@ class Pedido {
     }
 }
 
-// Cliente
 class CicloDeVidaPedido {
 
     public static void main(String[] args) {
@@ -192,8 +185,3 @@ class CicloDeVidaPedido {
         System.out.println("estado final: " + foraDeOrdem.getEstadoAtual());
     }
 }
-
-//State x Strategy: estruturalmente idênticos. No Strategy quem escolhe é o CLIENTE, de fora, e as
-//estratégias não se conhecem. No State quem escolhe o próximo é o PRÓPRIO ESTADO, de dentro, e por
-//isso os estados se conhecem e formam um grafo de transições.
-//Estados sem campos podem ser constantes de enum, evitando criar um objeto a cada transição.

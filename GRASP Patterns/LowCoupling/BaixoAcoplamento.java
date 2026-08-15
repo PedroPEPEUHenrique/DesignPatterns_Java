@@ -30,9 +30,6 @@ class Pedido {
     }
 }
 
-// COMO NÃO FAZER - alto acoplamento
-// Depende de QUATRO implementações concretas e ainda as CRIA por dentro: não há como substituí-las
-// em teste, e a classe precisa ser revista sempre que qualquer uma das quatro mudar.
 class FaturamentoAcoplado {
 
     public void faturar(Pedido pedido) {
@@ -78,8 +75,6 @@ class ServidorSmtp {
     }
 }
 
-// COMO FAZER - depender de ABSTRAÇÕES e RECEBER as dependências em vez de criá-las.
-
 interface TransmissorFiscal {
     String transmitir(String cpf, int valorEmCentavos);
 }
@@ -96,8 +91,6 @@ interface Notificador {
     void notificar(String destinatario, String documento);
 }
 
-// Conhece quatro interfaces e nenhuma tecnologia. Trocar banco, gateway ou canal de notificação
-// não faz esta classe ser sequer recompilada.
 class Faturamento {
 
     private final TransmissorFiscal transmissor;
@@ -105,8 +98,6 @@ class Faturamento {
     private final RepositorioNotaFiscal repositorio;
     private final Notificador notificador;
 
-    // Injeção de dependência: quem monta o objeto decide as implementações, e essa decisão fica
-    // concentrada em um ponto só do sistema.
     Faturamento(TransmissorFiscal transmissor, GeradorDocumento gerador,
                 RepositorioNotaFiscal repositorio, Notificador notificador) {
         this.transmissor = transmissor;
@@ -160,8 +151,6 @@ class NotificadorEmail implements Notificador {
     }
 }
 
-// Dublês de teste: só existem porque a classe depende de abstrações. Com o desenho acoplado, este
-// teste exigiria rede, banco e servidor SMTP no ar.
 class TransmissorFalso implements TransmissorFiscal {
 
     @Override
@@ -207,10 +196,3 @@ class BaixoAcoplamento {
         System.out.println("  a MESMA classe Faturamento rodou nos dois cenários");
     }
 }
-
-//Formas de acoplamento: A tem atributo do tipo B, chama método de B, recebe ou devolve B, ou herda
-//de B. A herança é a MAIS forte - a subclasse depende até de detalhes protegidos da superclasse, e
-//é a razão do "prefira composição a herança".
-//Acoplamento não se elimina, se controla: zero acoplamento é nenhum sistema. Depender de classes
-//estáveis é barato; de classes voláteis e concretas é o que custa caro.
-//É um princípio AVALIATIVO - serve para comparar dois desenhos, não há métrica de "acoplado demais".

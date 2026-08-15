@@ -11,8 +11,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-// ===== DOMÍNIO - entidades com comportamento. Sem anotação, sem SQL, sem HTTP. =====
-
 class Cliente {
 
     private Long id;
@@ -62,7 +60,6 @@ class ItemPedido {
         this.precoUnitarioEmCentavos = precoUnitarioEmCentavos;
     }
 
-    // Information Expert
     int subtotalEmCentavos() {
         return quantidade * precoUnitarioEmCentavos;
     }
@@ -89,7 +86,6 @@ class Pedido {
         this.cliente = cliente;
     }
 
-    // Creator: quem agrega os itens é quem os cria, e por isso consegue validar.
     void adicionarItem(String sku, int quantidade, int precoUnitarioEmCentavos) {
         if (quantidade < 1 || quantidade > 100) {
             throw new IllegalArgumentException("quantidade inválida: " + quantidade);
@@ -136,12 +132,6 @@ class Pedido {
         return status;
     }
 }
-
-// ===== PERSISTÊNCIA - DAO / REPOSITORY =====
-// DAO (Core J2EE Patterns) encapsula o acesso a uma FONTE DE DADOS e fala em termos de registro.
-// REPOSITORY (DDD) apresenta-se como uma COLEÇÃO de objetos de domínio. Na prática se confundem;
-// o que importa é o efeito: o domínio não sabe se há JDBC, JPA, arquivo ou memória do outro lado.
-// Padrões: Pure Fabrication, Protected Variations, Low Coupling.
 
 interface PedidoRepository {
 
@@ -217,17 +207,6 @@ class ClienteRepositoryEmMemoria implements ClienteRepository {
     }
 }
 
-// A implementação JPA teria EXATAMENTE a mesma interface - trocar uma pela outra não faz o serviço
-// mudar, e é esse o teste de que a proteção funcionou:
-//
-//   class PedidoRepositoryJpa implements PedidoRepository {
-//       @PersistenceContext private EntityManager em;
-//       public void salvar(Pedido p) { em.merge(p); }
-//       public Optional<Pedido> porCodigo(String codigo) { ... createQuery ... }
-//   }
-
-// ===== DTO - atravessa a fronteira sem expor a entidade =====
-
 class NovoPedidoDTO {
 
     private final String cpfCliente;
@@ -296,8 +275,6 @@ class PedidoResumoDTO {
     }
 }
 
-// ASSEMBLER - sem ela, ou a entidade ganharia um "paraDTO()" (baixa coesão), ou o DTO conheceria a
-// entidade (acoplamento na direção errada).
 class PedidoAssembler {
 
     PedidoResumoDTO paraResumo(Pedido pedido) {
@@ -316,8 +293,6 @@ class PedidoAssembler {
         return resumos;
     }
 }
-
-// ===== SERVIÇOS DE APOIO =====
 
 interface GatewayPagamento {
     String cobrar(String cpf, int valorEmCentavos);
@@ -344,12 +319,6 @@ class NotificadorConsole implements Notificador {
     }
 }
 
-// ===== SERVICE LAYER / SESSION FACADE =====
-// Session Facade nasceu para evitar dezenas de chamadas de rede do cliente remoto; hoje o motivo
-// principal é ser a FRONTEIRA TRANSACIONAL e coordenar o caso de uso.
-// Em Jakarta EE seria um @Stateless com @Transactional em cada método.
-// Padrões: Facade (GoF), Controller (GRASP), Low Coupling.
-
 class ServicoPedido {
 
     private final PedidoRepository pedidos;
@@ -358,8 +327,6 @@ class ServicoPedido {
     private final Notificador notificador;
     private final PedidoAssembler assembler;
 
-    // Injeção por construtor: as dependências ficam explícitas e o objeto nasce completo. É o que
-    // o @Inject do CDI faz por baixo.
     ServicoPedido(PedidoRepository pedidos, ClienteRepository clientes,
                   GatewayPagamento gateway, Notificador notificador, PedidoAssembler assembler) {
         this.pedidos = pedidos;
@@ -369,11 +336,7 @@ class ServicoPedido {
         this.assembler = assembler;
     }
 
-    // UM método público = UM caso de uso = UMA transação.
-    // O serviço COORDENA; quem decide a regra é o domínio. Um serviço que calcula no lugar do
-    // domínio produz o modelo anêmico.
     public PedidoResumoDTO criarPedido(NovoPedidoDTO dto) {
-        // ---- início da transação (@Transactional faria isso) ----
 
         Cliente cliente = clientes.porCpf(dto.getCpfCliente())
                 .orElseThrow(() -> new IllegalArgumentException(
@@ -389,10 +352,8 @@ class ServicoPedido {
         pedidos.salvar(pedido);
         notificador.notificar(cliente.getCpf(), "pedido " + pedido.getCodigo() + " criado");
 
-        // Devolve DTO, não a entidade: a camada de cima não fica acoplada ao domínio.
         return assembler.paraResumo(pedido);
 
-        // ---- commit ----
     }
 
     public PedidoResumoDTO pagarPedido(String codigo) {
@@ -401,7 +362,7 @@ class ServicoPedido {
 
         String comprovante = gateway.cobrar(pedido.getCliente().getCpf(), pedido.totalEmCentavos());
 
-        pedido.pagar();          // a regra de transição está na entidade, não aqui
+        pedido.pagar();
         pedidos.salvar(pedido);
 
         notificador.notificar(pedido.getCliente().getCpf(), "pagamento " + comprovante + " aprovado");
@@ -421,8 +382,6 @@ class ServicoPedido {
         return "PED-" + (System.nanoTime() % 10000);
     }
 }
-
-// ===== APRESENTAÇÃO - aqui estaria o @RestController, o Servlet ou o bean JSF =====
 
 class PedidoController {
 
@@ -464,8 +423,7 @@ class PedidoController {
 class PadroesCorporativos {
 
     public static void main(String[] args) {
-        // Único ponto que conhece as implementações concretas. Em Jakarta EE, quem faz esta
-        // montagem é o contêiner CDI a partir das anotações - o efeito é o mesmo.
+
         ClienteRepository clientes = new ClienteRepositoryEmMemoria();
         PedidoRepository pedidos = new PedidoRepositoryEmMemoria();
 
@@ -481,36 +439,14 @@ class PadroesCorporativos {
         PedidoController controller = new PedidoController(servico);
 
         controller.postPedido("11122233344");
-        controller.postPedido("99999999999");   // cliente inexistente
+        controller.postPedido("99999999999");
 
         controller.getPorCliente("11122233344");
 
         String codigo = pedidos.porCliente("11122233344").get(0).getCodigo();
         controller.putPagamento(codigo);
-        controller.putPagamento(codigo);        // segunda vez: o domínio recusa
+        controller.putPagamento(codigo);
 
         System.out.println("\npedidos pagos: " + servico.listarPagos().size());
     }
 }
-
-//QUADRO DE CORRESPONDÊNCIA
-//Camada / peça          Padrão corporativo         Padrão GoF / GRASP
-//-------------------------------------------------------------------------------
-//Resource, Servlet      Front Controller           Controller (GRASP), Facade
-//DTO                    Data Transfer Object       Pure Fabrication
-//Assembler              Transfer Object Assembler  Pure Fabrication, Builder
-//ServicoPedido          Session Facade,            Facade, Controller, Low Coupling
-//                       Service Layer
-//PedidoRepository       DAO / Repository           Pure Fabrication, Protected Variations
-//Entidades              Domain Model               Information Expert, Creator, Polymorphism
-//EntityManager          Unit of Work, Identity Map Facade sobre JDBC
-//Proxy LAZY da JPA      -                          Proxy
-//Filtro de servlet      Intercepting Filter        Chain of Responsibility
-//Interceptador CDI      -                          Decorator / Proxy
-//@Inject                Dependency Injection       Indirection, Protected Variations
-//@Produces              -                          Factory Method
-//@Observes / Event      -                          Observer
-//
-//Os frameworks corporativos não substituem os padrões - eles são feitos DE padrões. Reconhecer
-//qual está por trás de cada anotação é o que permite prever o comportamento do contêiner em vez
-//de decorá-lo.

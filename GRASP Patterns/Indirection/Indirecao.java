@@ -32,7 +32,6 @@ class Venda {
     }
 }
 
-// Sistema externo, fora do nosso controle, com API esquisita e instável.
 class ContabilidadeLegada {
 
     public void postEntry(String accountCode, long amountCents, String costCenterId, char debitCredit) {
@@ -41,9 +40,6 @@ class ContabilidadeLegada {
     }
 }
 
-// COMO NÃO FAZER - acoplamento direto
-// Vazaram para cá o código contábil, a unidade, o caractere 'C' de crédito e o formato do centro
-// de custo. Nada disso é assunto de vendas.
 class ServicoVendasAcoplado {
 
     private final ContabilidadeLegada contabilidade = new ContabilidadeLegada();
@@ -54,12 +50,10 @@ class ServicoVendasAcoplado {
     }
 }
 
-// COMO FAZER - a abstração fala a linguagem do NOSSO domínio, não a do sistema externo.
 interface LancamentoContabil {
     void lancarReceita(Venda venda);
 }
 
-// O intermediário (aqui no papel de Adapter) é o único ponto que conhece a API legada.
 class AdaptadorContabilidadeLegada implements LancamentoContabil {
 
     private final ContabilidadeLegada legado = new ContabilidadeLegada();
@@ -91,8 +85,6 @@ class AdaptadorContabilidadeNuvem implements LancamentoContabil {
     }
 }
 
-// Intermediário que fala com VÁRIOS destinos: durante a migração, os dois sistemas recebem o mesmo
-// lançamento, e nem o serviço de vendas nem os adaptadores mudam.
 class LancamentoEmParalelo implements LancamentoContabil {
 
     private final List<LancamentoContabil> destinos = new ArrayList<>();
@@ -111,7 +103,6 @@ class LancamentoEmParalelo implements LancamentoContabil {
     }
 }
 
-// Intermediário que acrescenta comportamento sem que nenhuma das pontas saiba.
 class LancamentoComRegistro implements LancamentoContabil {
 
     private final LancamentoContabil delegado;
@@ -132,7 +123,6 @@ class LancamentoComRegistro implements LancamentoContabil {
     }
 }
 
-// Cliente desacoplado: conhece UMA interface do próprio domínio e mais nada.
 class ServicoVendas {
 
     private final LancamentoContabil contabilidade;
@@ -174,9 +164,3 @@ class Indirecao {
         System.out.println("nenhuma dessas variações alterou a classe ServicoVendas");
     }
 }
-
-//Indireção é o mecanismo por trás de vários padrões do GoF, com intenções diferentes: o Adapter
-//TRADUZ, a Facade SIMPLIFICA, o Proxy CONTROLA, o Mediator COORDENA e o Observer usa o registro de
-//observadores como indireção entre emissor e ouvinte.
-//O custo: cada camada é mais uma classe para navegar e mais um salto para depurar. Use quando
-//houver variação real a proteger, não "por precaução".

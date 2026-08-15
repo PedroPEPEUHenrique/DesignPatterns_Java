@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-// Component: folha e composto implementam ESTA MESMA interface.
 interface UnidadeOrganizacional {
     String getNome();
 
@@ -19,7 +18,6 @@ interface UnidadeOrganizacional {
     void imprimir(String recuo);
 }
 
-// Leaf: não tem filhos e encerra a recursão.
 class Funcionario implements UnidadeOrganizacional {
     private final String nome;
     private final String cargo;
@@ -53,7 +51,6 @@ class Funcionario implements UnidadeOrganizacional {
     }
 }
 
-// Composite: guarda filhos do tipo Component e delega, sem saber se cada um é folha ou composto.
 class Setor implements UnidadeOrganizacional {
     private final String nome;
     private final List<UnidadeOrganizacional> membros = new ArrayList<>();
@@ -62,8 +59,6 @@ class Setor implements UnidadeOrganizacional {
         this.nome = nome;
     }
 
-    // A gestão de filhos fica só no composto. Colocá-la no Component daria transparência total,
-    // mas a folha teria que lançar exceção em adicionar() - troca-se segurança por uniformidade.
     public Setor adicionar(UnidadeOrganizacional unidade) {
         membros.add(unidade);
         return this;
@@ -86,7 +81,7 @@ class Setor implements UnidadeOrganizacional {
     public int custoMensalEmCentavos() {
         int total = 0;
         for (UnidadeOrganizacional membro : membros) {
-            total += membro.custoMensalEmCentavos();   // recursão implícita pelo polimorfismo
+            total += membro.custoMensalEmCentavos();
         }
         return total;
     }
@@ -110,10 +105,8 @@ class Setor implements UnidadeOrganizacional {
     }
 }
 
-// Cliente
 class EstruturaOrganizacional {
 
-    // Sem instanceof, sem cast, sem recursão manual: a árvore inteira responde a uma chamada.
     public void relatorioDeCusto(UnidadeOrganizacional unidade) {
         System.out.println("custo de " + unidade.getNome() + ": "
                            + unidade.custoMensalEmCentavos() + " centavos");
@@ -141,12 +134,8 @@ class EstruturaOrganizacional {
 
         EstruturaOrganizacional cliente = new EstruturaOrganizacional();
 
-        // A MESMA operação vale para a empresa inteira, para um setor e para uma única pessoa.
         cliente.relatorioDeCusto(empresa);
         cliente.relatorioDeCusto(engenharia);
         cliente.relatorioDeCusto(new Funcionario("Ana", "Tech Lead", 1800000));
     }
 }
-
-//O Composite aparece em toda estrutura recursiva: sistema de arquivos, DOM, menus e expressões
-//aritméticas - esta última é a base do Interpreter, que é um Composite especializado.

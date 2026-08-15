@@ -7,7 +7,6 @@
 import java.util.ArrayList;
 import java.util.List;
 
-// Modelo "push": passar um objeto de evento evita que cada observador consulte o sujeito de volta.
 class EventoEstoque {
     private final String sku;
     private final int quantidadeAnterior;
@@ -42,12 +41,10 @@ class EventoEstoque {
     }
 }
 
-// Observer
 interface ObservadorEstoque {
     void aoMudarEstoque(EventoEstoque evento);
 }
 
-// Subject: conhece apenas a interface. Essa ignorância é o que o mantém fechado para alteração.
 class Estoque {
 
     private final String sku;
@@ -86,15 +83,12 @@ class Estoque {
     }
 
     private void notificar(EventoEstoque evento) {
-        // Iterar sobre uma CÓPIA: um observador pode se descadastrar durante a notificação, e
-        // remover da lista original em plena iteração lança ConcurrentModificationException.
+
         for (ObservadorEstoque observador : new ArrayList<>(observadores)) {
             observador.aoMudarEstoque(evento);
         }
     }
 }
-
-// Observadores concretos: cada um com sua responsabilidade, sem saber dos outros.
 
 class AlertaComprador implements ObservadorEstoque {
 
@@ -130,7 +124,6 @@ class AuditoriaMovimentacao implements ObservadorEstoque {
     }
 }
 
-// Observador que se descadastra durante a notificação: o caso que justifica a cópia da lista.
 class AvisoUnicoDeEsgotamento implements ObservadorEstoque {
 
     private final Estoque estoque;
@@ -148,13 +141,11 @@ class AvisoUnicoDeEsgotamento implements ObservadorEstoque {
     }
 }
 
-// Cliente
 class MonitorEstoque {
 
     public static void main(String[] args) {
         Estoque teclado = new Estoque("TEC-001", 12, 5);
 
-        // A composição de observadores é decidida AQUI, fora da classe Estoque.
         teclado.registrar(new AlertaComprador());
         teclado.registrar(new PainelLoja());
         teclado.registrar(new AuditoriaMovimentacao());
@@ -168,18 +159,12 @@ class MonitorEstoque {
 
         teclado.baixar(5);
         System.out.println("---");
-        teclado.baixar(3);   // cruza o ponto de reposição
+        teclado.baixar(3);
         System.out.println("---");
-        teclado.baixar(4);   // esgota: o aviso único dispara e sai da lista
+        teclado.baixar(4);
         System.out.println("---");
         teclado.baixar(1);
         System.out.println("---");
         teclado.repor(20);
     }
 }
-
-//Pontos de atenção: o padrão não garante ORDEM de notificação; o sujeito guarda referência forte
-//para cada observador, então quem não se descadastra vaza memória ("lapsed listener"); e um
-//observador que altera o sujeito dispara nova notificação, podendo gerar recursão infinita.
-//java.util.Observer/Observable foram DEPRECIADOS no Java 9. Hoje se usa interface própria,
-//PropertyChangeListener, Flow.Publisher/Subscriber ou eventos CDI com @Observes.

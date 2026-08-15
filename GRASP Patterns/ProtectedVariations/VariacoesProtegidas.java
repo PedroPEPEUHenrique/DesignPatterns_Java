@@ -39,9 +39,6 @@ class Produto {
     }
 }
 
-// COMO NÃO FAZER - o volátil misturado ao estável
-// Cada mudança de imposto, campanha ou provedor faz alguém editar exatamente a linha onde mora a
-// fórmula, que é a parte que não deveria ser tocada.
 class PrecificadorSemProtecao {
 
     public int precoFinal(Produto produto, int quantidade) {
@@ -57,7 +54,6 @@ class PrecificadorSemProtecao {
     }
 }
 
-// Ponto de variação 1 - regime tributário
 interface PoliticaTributaria {
     int impostoEmCentavos(Produto produto, int baseEmCentavos);
 
@@ -83,7 +79,6 @@ class RegimeAtual implements PoliticaTributaria {
     }
 }
 
-// A reforma tributária entra como classe NOVA. A fórmula do preço não é tocada.
 class RegimeReformaTributaria implements PoliticaTributaria {
 
     @Override
@@ -98,7 +93,6 @@ class RegimeReformaTributaria implements PoliticaTributaria {
     }
 }
 
-// Ponto de variação 2 - campanhas de desconto
 interface PoliticaDesconto {
     int descontoEmCentavos(Produto produto, int quantidade, int baseEmCentavos);
 
@@ -137,7 +131,6 @@ class DescontoPorVolume implements PoliticaDesconto {
     }
 }
 
-// Ponto de variação 3 - provedor de câmbio (instabilidade externa)
 interface FonteCotacao {
     double cotacao(String moeda);
 }
@@ -165,7 +158,6 @@ class CotacaoFixaParaTeste implements FonteCotacao {
     }
 }
 
-// O NÚCLEO ESTÁVEL: só o conceito que não muda. Nenhum if aqui dentro.
 class Precificador {
 
     private final PoliticaTributaria tributacao;
@@ -217,7 +209,6 @@ class VariacoesProtegidas {
         System.out.println("  notebook x1:  " + depoisDaReforma.precoFinalEmCentavos(notebook, 1));
         System.out.println("  arroz x1:     " + depoisDaReforma.precoFinalEmCentavos(arroz, 1));
 
-        // O teste roda com cotação previsível, sem depender do provedor externo.
         Precificador emTeste = new Precificador(new RegimeAtual(), new SemDesconto(),
                                                 new CotacaoFixaParaTeste());
         System.out.println("  [teste] notebook x1: " + emTeste.precoFinalEmCentavos(notebook, 1));
@@ -243,10 +234,3 @@ class VariacoesProtegidas {
                            + List.of("tributação", "campanha", "câmbio"));
     }
 }
-
-//Mecanismos, do mais simples ao mais elaborado: encapsulamento e interfaces, polimorfismo,
-//indireção, dados em vez de código (configuração, regras em banco) e metadados - frameworks como
-//JPA e CDI protegem o seu código lendo anotações em tempo de execução.
-//O limite: só protege quem PREVÊ a variação certa. Proteger tudo é especulação e gera abstrações
-//que nunca serão usadas. Proteja onde a variação já aconteceu ou há evidência de que vai acontecer.
-//É a formulação GRASP do Open/Closed Principle e do "programe para uma interface".

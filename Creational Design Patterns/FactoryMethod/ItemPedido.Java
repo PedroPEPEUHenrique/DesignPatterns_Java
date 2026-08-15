@@ -1,22 +1,23 @@
-//Suponha que a sua tarefa seja implementar um método que remova os itens inválidos de uma coleção de itens de um pedido. Um item de pedido possui os seguintes atributos:
-//Quantidade
-//Preço unitário
-//Produto solicitado
- 
-//Imagine que um item válido é aquele que tenha uma quantidade de 1 a 100. Veja a implementação da classe ItemPedido a seguir.
-
-//Além dos atributos, das operações de acesso e do construtor, essa classe define a operação valor, que retorna o valor do item resultante da multiplicação da quantidade pelo preço unitário.
+//Implementar um método que remova de uma coleção os itens inválidos de um pedido. Um item tem
+//produto, quantidade e preço unitário, e a operação valor() devolve quantidade x preço unitário.
+//É válido o item com quantidade de 1 a 100, inclusive nos dois extremos. A implementação original
+//trazia cinco erros: setter declarado com tipo de retorno, métodos soltos fora de classe, aspas
+//angulares no lugar de < >, remoção pela coleção durante a iteração (o que lança
+//ConcurrentModificationException) e o limite superior tratado como exclusivo.
+//A segunda parte do arquivo é o Factory Method: ele evita que o cliente instancie diretamente uma
+//dentre várias implementações de uma abstração, delegando a criação a subclasses de uma fábrica -
+//o cliente passa a depender só da abstração. Aqui a fábrica devolve uma estratégia de pagamento,
+//com Factory Method e Strategy trabalhando juntos.
 
 import java.util.Collection;
 import java.util.Iterator;
 
-class Produto { }   // stub: só para as anotações fecharem
+class Produto { }
 
 class ItemPedido{
     private Produto produto;
     private int quantidade;
     private int precoUnitarioEmCentavos;
-
 
     public ItemPedido(Produto produto, int quantidade, int valorEmCentavos){
         this.produto = produto;
@@ -35,7 +36,7 @@ class ItemPedido{
     public int getQuantidade(){
         return quantidade;
     }
-    // ERRO 1: estava "public int" sem return -> não compila. Setter é void.
+
     public void setQuantidade(int quantidade){
         this.quantidade=quantidade;
     }
@@ -47,31 +48,24 @@ class ItemPedido{
     }
 }
 
-// ERRO 2: métodos soltos fora de classe. Em Java todo método vive dentro de um tipo.
 class ValidadorPedido {
 
-    // ERRO 3: os sinais ‹ › (aspas angulares) não são generics. O correto é < >.
     public void removerItensInvalidos(Collection<ItemPedido> itens) {
         Iterator<ItemPedido> iterator = itens.iterator();
         while (iterator.hasNext()) {
             ItemPedido item = iterator.next();
             if (!isValido(item)) {
-                // ERRO 4: itens.remove(item) durante a iteração lança
-                // ConcurrentModificationException. Remove-se pelo próprio iterator.
+
                 iterator.remove();
             }
         }
     }
 
-    // ERRO 5: o enunciado diz "de 1 a 100" (inclusive), mas < 100 rejeitava o item de 100.
     public boolean isValido(ItemPedido item){
         return item.getQuantidade() >= 1 && item.getQuantidade() <= 100;
     }
 }
 
-//O Factory Method resolve o problema mais geral de evitar que o módulo cliente precise instanciar diretamente uma dentre várias implementações de uma abstração, fazendo com que ele dependa apenas da abstração e não das implementações concretas.
-
-// Padrão Strategy
 interface PagamentoStrategy {
     void pagar(double valor);
 }
@@ -89,7 +83,6 @@ class PagamentoPix implements PagamentoStrategy {
     }
 }
 
-// Padrão Factory Method
 abstract class PagamentoFactory {
     public abstract PagamentoStrategy criarMetodoPagamento();
 }
@@ -107,7 +100,6 @@ class PixFactory extends PagamentoFactory {
     }
 }
 
-// Classe Cliente
 class ServicoPagamento {
     private PagamentoStrategy pagamento;
 

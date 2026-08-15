@@ -6,7 +6,6 @@
 import java.util.HashMap;
 import java.util.Map;
 
-// Versão ingênua: dois threads podem passar pelo if ao mesmo tempo e criar duas instâncias.
 class ConfiguracaoInsegura {
     private static ConfiguracaoInsegura instancia;
 
@@ -20,7 +19,6 @@ class ConfiguracaoInsegura {
     }
 }
 
-// Inicialização adiantada: thread-safe pela JVM, mas cria a instância mesmo que ninguém use.
 class ConfiguracaoEager {
     private static final ConfiguracaoEager INSTANCIA = new ConfiguracaoEager();
 
@@ -31,11 +29,8 @@ class ConfiguracaoEager {
     }
 }
 
-// Singleton - inicialização sob demanda (lazy holder)
-// A classe interna só é carregada na primeira chamada: preguiçoso e thread-safe sem synchronized.
 class GerenciadorConfiguracao {
 
-    // Construtor privado: é o que impede o "new" no cliente.
     private GerenciadorConfiguracao() {
         carregarDaOrigem();
     }
@@ -67,7 +62,6 @@ class GerenciadorConfiguracao {
     }
 }
 
-// Via enum: a JVM garante instância única inclusive contra reflexão e serialização.
 enum ConfiguracaoEnum {
     INSTANCIA;
 
@@ -82,7 +76,6 @@ enum ConfiguracaoEnum {
     }
 }
 
-// Cliente
 class ServicoIntegracaoExterna {
 
     public void chamar() {
@@ -105,7 +98,3 @@ class DemoSingleton {
         System.out.println("ambiente = " + ConfiguracaoEnum.INSTANCIA.get("ambiente"));
     }
 }
-
-//O Singleton introduz estado global e uma dependência escondida, o que dificulta substituí-lo em
-//teste. Com injeção de dependência (CDI, Spring), o escopo singleton do contêiner resolve o mesmo
-//problema sem estado global.

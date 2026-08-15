@@ -17,7 +17,6 @@ class Produto {
     }
 }
 
-// COMO NÃO FAZER - objetos anêmicos: só dados, nenhum comportamento.
 class ItemPedidoAnemico {
     private Produto produto;
     private int quantidade;
@@ -54,8 +53,6 @@ class PedidoAnemico {
     }
 }
 
-// A responsabilidade foi parar longe do dado. Cada getter de outra classe é um acoplamento: se
-// ItemPedido mudar a forma de guardar o preço, ESTA classe quebra.
 class ServicoCalculoPedido {
 
     public int calcularTotal(PedidoAnemico pedido) {
@@ -66,8 +63,6 @@ class ServicoCalculoPedido {
         return total;
     }
 }
-
-// COMO FAZER - cada classe calcula o que consegue com o que ela mesma tem.
 
 class ItemPedido {
     private final Produto produto;
@@ -80,7 +75,6 @@ class ItemPedido {
         this.precoUnitarioEmCentavos = precoUnitarioEmCentavos;
     }
 
-    // Quem tem quantidade e preço é o item: o subtotal é dele. E agora nem precisamos expor os dois.
     public int subtotalEmCentavos() {
         return quantidade * precoUnitarioEmCentavos;
     }
@@ -106,8 +100,6 @@ class Pedido {
         this.descontoEmCentavos = descontoEmCentavos;
     }
 
-    // Quem tem a lista é o pedido: o total é dele. Mas ele NÃO calcula o subtotal de cada item -
-    // a responsabilidade se distribui pela cadeia de quem tem cada informação.
     public int totalEmCentavos() {
         int total = 0;
         for (ItemPedido item : itens) {
@@ -147,9 +139,3 @@ class EspecialistaNaInformacao {
         System.out.println("itens: " + pedido.quantidadeDeItens());
     }
 }
-
-//Como o cálculo acontece onde o dado está, o dado não precisa vazar - o Expert reforça Low
-//Coupling e High Cohesion, e por isso é o padrão GRASP básico.
-//Quando NÃO seguir: quando atribuir a responsabilidade ao especialista criar acoplamento indevido.
-//O caso clássico é persistência - dar ao Pedido a responsabilidade de gravar acoplaria o domínio
-//ao banco. A saída é uma classe que não existe no domínio, o que é Pure Fabrication.

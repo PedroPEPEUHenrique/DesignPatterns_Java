@@ -1,3 +1,9 @@
+//Duplicar formas em um editor gráfico: círculo, retângulo e grupo de formas. Se o editor montar a
+//cópia com new, ele precisa conhecer toda classe concreta e copiar campo a campo - e ainda erra a
+//cópia PROFUNDA, deixando a duplicata compartilhando o mesmo estilo do original.
+//O Prototype cria objetos novos COPIANDO um exemplar existente: cada classe sabe se duplicar, e o
+//cliente clona pela abstração, sem saber de que tipo é o objeto que tem em mãos.
+
 import java.util.ArrayList;
 import java.util.List;
 

@@ -43,12 +43,8 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
 
-// DTO - objeto sem comportamento cuja função é atravessar a fronteira. Desacopla o contrato
-// externo do modelo interno, evita LazyInitializationException ao serializar entidades e não expõe
-// campos internos. É uma Fabricação Pura.
 class NovoPedidoDTO {
 
-    // Bean Validation: as restrições ficam junto do dado, em vez de espalhadas em ifs.
     @NotBlank(message = "o CPF é obrigatório")
     @Size(min = 11, max = 14, message = "CPF deve ter entre 11 e 14 caracteres")
     private String cpfCliente;
@@ -136,13 +132,10 @@ class PedidoResumoDTO {
     }
 }
 
-// Prefixo de todos os recursos: as URLs ficam em /api/...
 @ApplicationPath("/api")
 class ConfiguracaoRest extends Application {
 }
 
-// RECURSO REST: não abre transação, não toca em EntityManager e não calcula. Traduz HTTP para
-// chamada de serviço e o resultado de volta para HTTP.
 @Path("/pedidos")
 @RequestScoped
 @Produces(MediaType.APPLICATION_JSON)
@@ -152,7 +145,6 @@ class PedidoResource {
     @Inject
     private ServicoPedidoRest servico;
 
-    // @QueryParam lê a query string; @DefaultValue evita nulo quando o parâmetro não vem.
     @GET
     public List<PedidoResumoDTO> listar(@QueryParam("status") String status,
                                         @QueryParam("pagina") @DefaultValue("0") int pagina,
@@ -160,7 +152,6 @@ class PedidoResource {
         return servico.listar(status, pagina, tamanho);
     }
 
-    // Devolver 404 faz parte do contrato REST - devolver 200 com corpo vazio é erro comum.
     @GET
     @Path("/{codigo}")
     public Response porCodigo(@PathParam("codigo") String codigo) {
@@ -174,9 +165,6 @@ class PedidoResource {
         return Response.ok(pedido).build();
     }
 
-    // @Valid dispara o Bean Validation ANTES do método executar: a validação vira um
-    // interceptador, não um bloco de ifs no início do corpo.
-    // A resposta correta para criação é 201 com o cabeçalho Location.
     @POST
     public Response criar(@Valid NovoPedidoDTO novoPedido) {
         String codigo = servico.criar(novoPedido);
@@ -190,7 +178,7 @@ class PedidoResource {
     @Path("/{codigo}/pagamento")
     public Response pagar(@PathParam("codigo") String codigo) {
         servico.pagar(codigo);
-        return Response.noContent().build();   // 204
+        return Response.noContent().build();
     }
 
     @DELETE
@@ -214,8 +202,6 @@ class ErroDTO {
     }
 }
 
-// Concentra a tradução de exceção para resposta HTTP num lugar só, em vez de um try/catch repetido
-// em cada método do recurso. É Indirection aplicada ao erro.
 @Provider
 class RegraNegocioExceptionMapper implements ExceptionMapper<IllegalArgumentException> {
 
@@ -252,7 +238,6 @@ class ServicoPedidoRest {
     }
 }
 
-// SERVLET - JSF, JAX-RS e os frameworks MVC rodam SOBRE ele.
 @WebServlet(urlPatterns = "/pedidos")
 class PedidoServlet extends HttpServlet {
 
@@ -261,9 +246,6 @@ class PedidoServlet extends HttpServlet {
     @Inject
     private ServicoPedidoRest servico;
 
-    // CONCORRÊNCIA: o contêiner cria UMA instância do servlet e a compartilha entre todas as
-    // requisições, cada uma em sua thread. Atributo de instância com estado de requisição é bug
-    // garantido - o estado vai em variável local, no request ou na sessão.
     @Override
     protected void doGet(HttpServletRequest requisicao, HttpServletResponse resposta)
             throws ServletException, IOException {
@@ -271,15 +253,11 @@ class PedidoServlet extends HttpServlet {
         String status = requisicao.getParameter("status");
         List<PedidoResumoDTO> pedidos = servico.listar(status, 0, 20);
 
-        // Escopos de atributo: request (uma requisição), session (a sessão do usuário),
-        // application (enquanto a aplicação estiver no ar).
         requisicao.setAttribute("pedidos", pedidos);
 
         HttpSession sessao = requisicao.getSession();
         sessao.setAttribute("ultimaConsulta", System.currentTimeMillis());
 
-        // forward mantém a mesma requisição; sendRedirect faz o navegador emitir uma NOVA - é o
-        // que se usa depois de um POST, para evitar reenvio do formulário ao atualizar a página.
         requisicao.getRequestDispatcher("/WEB-INF/jsp/pedidos.jsp").forward(requisicao, resposta);
     }
 
@@ -296,8 +274,6 @@ class PedidoServlet extends HttpServlet {
     }
 }
 
-// FILTRO - Chain of Responsibility na especificação: cada filtro decide se chama o próximo
-// (doFilter) ou se interrompe a corrente ali mesmo.
 @WebFilter(urlPatterns = "/api/*")
 class FiltroAutenticacao implements jakarta.servlet.Filter {
 
@@ -312,20 +288,9 @@ class FiltroAutenticacao implements jakarta.servlet.Filter {
 
         if (token == null || token.isBlank()) {
             ((HttpServletResponse) resposta).sendError(HttpServletResponse.SC_UNAUTHORIZED);
-            return;   // NÃO chama doFilter: a corrente para aqui e o servlet nunca executa
+            return;
         }
 
         corrente.doFilter(requisicao, resposta);
     }
 }
-
-//RESUMO
-//Servlet   - base de tudo; uma instância compartilhada, cuidado com estado
-//Filter    - Chain of Responsibility para requisições transversais (auth, CORS, log, encoding)
-//JSF       - MVC por componentes, com @Named + escopos CDI
-//JAX-RS    - REST por anotações
-//JSON-B    - serialização automática entre objeto e JSON
-//Bean Validation - restrições disparadas por @Valid
-//
-//Padrões: DTO, Front Controller (o servlet despachante do JAX-RS/JSF), Controller do GRASP,
-//Chain of Responsibility (filtros), Facade (o serviço de fronteira) e Indirection (ExceptionMapper).

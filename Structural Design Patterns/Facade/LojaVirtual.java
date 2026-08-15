@@ -1,3 +1,10 @@
+//Finalizar uma compra exige orquestrar estoque, precificação, antifraude, pagamento, nota fiscal,
+//logística e e-mail, na ordem certa e com desfazimento quando um passo falha. Cada tela ou API que
+//repetisse essa sequência duplicaria a ordem dos passos, o estorno e a liberação da reserva.
+//O Facade fornece uma interface ÚNICA e de mais alto nível para um conjunto de interfaces de um
+//subsistema, tornando-o mais fácil de usar. Ele não veda o subsistema: quem precisar de um caso
+//particular continua podendo chamar os serviços diretamente.
+
 import java.util.List;
 
 class ServicoEstoque {

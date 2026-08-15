@@ -7,7 +7,6 @@
 import java.util.ArrayList;
 import java.util.List;
 
-// COMO NÃO FAZER - condicional por tipo
 class CalculadoraImpostoComSwitch {
 
     public int calcular(String categoria, int valorEmCentavos) {
@@ -21,8 +20,7 @@ class CalculadoraImpostoComSwitch {
             case "SERVICO":
                 return (int) (valorEmCentavos * 0.05);
             default:
-                // Uma categoria nova cai aqui silenciosamente e o sistema fatura errado, sem erro
-                // de compilação e sem exceção.
+
                 return (int) (valorEmCentavos * 0.18);
         }
     }
@@ -38,8 +36,6 @@ class CalculadoraImpostoComSwitch {
         }
     }
 }
-
-// COMO FAZER - cada variação vira um TIPO, e cada tipo responde por si.
 
 interface ItemTributavel {
 
@@ -101,8 +97,6 @@ class Medicamento extends ItemBase {
         return false;
     }
 
-    // Um dado específico deste tipo fica DENTRO dele. Com o switch, "tarjaPreta" viraria mais um
-    // campo genérico na classe única, nulo para todas as outras categorias.
     @Override
     public String descricao() {
         return super.descricao() + (tarjaPreta ? " (tarja preta)" : "");
@@ -158,8 +152,6 @@ class Servico extends ItemBase {
     }
 }
 
-// Tipo NOVO, sem alterar nenhuma classe existente nem a nota fiscal. Se a regra nova obrigou a
-// mexer em código antigo, não era polimorfismo, era condicional disfarçada.
 class LivroDidatico extends ItemBase {
 
     LivroDidatico(String nome, int valorEmCentavos) {
@@ -172,7 +164,6 @@ class LivroDidatico extends ItemBase {
     }
 }
 
-// Cliente: nenhum switch, nenhum instanceof, nenhum cast.
 class NotaFiscal {
 
     private final List<ItemTributavel> itens = new ArrayList<>();
@@ -228,11 +219,3 @@ class Polimorfismo {
         System.out.println("total da nota: " + nota.totalEmCentavos());
     }
 }
-
-//Como reconhecer o problema: switch/if-else sobre um campo "tipo", "categoria" ou "status",
-//especialmente quando o MESMO encadeamento aparece em mais de um método. A refatoração chama-se
-//"Replace Conditional with Polymorphism".
-//O condicional é aceitável quando a variação é sobre um VALOR (faixas), e nos pontos de fronteira -
-//alguém precisa converter a String do banco no objeto certo. O objetivo é ter esse if em UM lugar
-//só, tipicamente uma fábrica.
-//É a base do Strategy, do State e do Command, e a leitura GRASP do Open/Closed Principle.

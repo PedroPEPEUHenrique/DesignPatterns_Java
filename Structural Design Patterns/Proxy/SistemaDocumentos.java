@@ -9,14 +9,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-// Subject: proxy e objeto real implementam a MESMA interface.
 interface Documento {
     String getTitulo();
 
     void exibir();
 }
 
-// RealSubject: o custo está no CONSTRUTOR - só existir já é pesado.
 class DocumentoDigitalizado implements Documento {
     private final String titulo;
     private final String conteudo;
@@ -42,8 +40,6 @@ class DocumentoDigitalizado implements Documento {
     }
 }
 
-// Proxy VIRTUAL
-// getTitulo() é respondido pelo próprio proxy, SEM disparar o carregamento - é aí que está o ganho.
 class ProxyVirtualDocumento implements Documento {
     private final String titulo;
     private DocumentoDigitalizado real;
@@ -60,7 +56,7 @@ class ProxyVirtualDocumento implements Documento {
     @Override
     public void exibir() {
         if (real == null) {
-            real = new DocumentoDigitalizado(titulo);   // inicialização preguiçosa
+            real = new DocumentoDigitalizado(titulo);
         }
         real.exibir();
     }
@@ -84,7 +80,6 @@ class Usuario {
     }
 }
 
-// Proxy de PROTEÇÃO: a regra de acesso fica FORA do objeto real.
 class ProxyProtecaoDocumento implements Documento {
     private final Documento real;
     private final Usuario usuario;
@@ -112,7 +107,6 @@ class ProxyProtecaoDocumento implements Documento {
     }
 }
 
-// Proxy de AUDITORIA: proxies são empilháveis, aqui um embrulha outro.
 class ProxyAuditoriaDocumento implements Documento {
     private final Documento real;
     private final Usuario usuario;
@@ -142,7 +136,6 @@ class ProxyAuditoriaDocumento implements Documento {
     }
 }
 
-// Proxy de CACHE: diferente do Flyweight, o objetivo é evitar a CHAMADA, não economizar memória.
 class ProxyCacheDocumento implements Documento {
     private static final Map<String, DocumentoDigitalizado> CACHE = new HashMap<>();
     private final String titulo;
@@ -162,7 +155,6 @@ class ProxyCacheDocumento implements Documento {
     }
 }
 
-// Cliente
 class SistemaDocumentos {
 
     public void listar(List<Documento> documentos) {
@@ -182,7 +174,7 @@ class SistemaDocumentos {
                 new ProxyVirtualDocumento("balanco-2020.tif"));
 
         SistemaDocumentos sistema = new SistemaDocumentos();
-        sistema.listar(acervo);   // nenhuma linha de "baixando": nada foi carregado
+        sistema.listar(acervo);
 
         System.out.println("\nabrindo um documento:");
         acervo.get(0).exibir();
@@ -212,9 +204,3 @@ class SistemaDocumentos {
         ProxyAuditoriaDocumento.imprimirTrilha();
     }
 }
-
-//Os quatro tipos clássicos: virtual (adia criação cara), de proteção (controla acesso), remoto
-//(representa objeto em outro processo - base de RMI, EJB remoto e stubs de gRPC) e smart
-//reference (tarefas extras no acesso - é o que a JPA faz com relacionamentos LAZY).
-//java.lang.reflect.Proxy cria proxies dinamicamente e é o mecanismo por trás dos interceptadores
-//de Spring, CDI e EJB.

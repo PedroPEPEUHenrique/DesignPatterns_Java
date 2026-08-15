@@ -1,25 +1,10 @@
-// ============================================================================
-// ABSTRACT FACTORY (GoF - Criacional)
-//
-// Intencao: fornecer uma interface para criar FAMILIAS de objetos relacionados
-// sem especificar suas classes concretas.
-//
-// Cenario: um servico recebe mensagens de varias origens (parceiros), cada uma
-// com seu proprio formato de serializacao (XML, JSON, ...). Para cada origem
-// existe uma familia inteira de decoders - um por tipo de mensagem - e eles
-// precisam ser usados de forma COERENTE: nao faz sentido decodificar o cliente
-// com o decoder XML e a conta com o decoder JSON.
-//
-// Essa garantia de coerencia da familia e o que distingue o Abstract Factory
-// do Factory Method, que produz um unico produto.
-// ============================================================================
-
-
-// ---------------------------------------------------------------------------
-// PRODUTOS FINAIS - as mensagens ja decodificadas.
-// Note que sao independentes do formato de origem: e justamente esse o ganho,
-// o restante do sistema trabalha so com elas.
-// ---------------------------------------------------------------------------
+//Um serviço de integração recebe mensagens de vários parceiros, cada um com o seu formato de
+//serialização (XML, JSON). Para cada origem existe uma FAMÍLIA inteira de decodificadores - um por
+//tipo de mensagem - que precisam ser usados de forma coerente: não faz sentido decodificar o
+//cliente com o decodificador XML e a conta com o de JSON.
+//O Abstract Factory fornece uma interface para criar FAMÍLIAS de objetos relacionados sem
+//especificar as suas classes concretas. Essa garantia de coerência da família é o que o distingue
+//do Factory Method, que produz um único produto.
 
 class MsgRegistrarCliente {
     private final String nome;
@@ -57,12 +42,6 @@ class MsgRegistrarConta {
     }
 }
 
-
-// ---------------------------------------------------------------------------
-// PRODUTOS ABSTRATOS - um tipo de decoder para cada tipo de mensagem.
-// Sao esses os "produtos" que a fabrica abstrata sabe criar.
-// ---------------------------------------------------------------------------
-
 interface RegistrarClienteDecoder {
     MsgRegistrarCliente decode(String textoMsg);
 }
@@ -71,26 +50,12 @@ interface RegistrarContaDecoder {
     MsgRegistrarConta decode(String textoMsg);
 }
 
-
-// ---------------------------------------------------------------------------
-// FABRICA ABSTRATA
-//
-// Declara uma operacao de criacao para CADA produto da familia. Acrescentar um
-// novo tipo de mensagem significa acrescentar um metodo aqui - e essa e a
-// principal desvantagem do padrao: a interface da fabrica nao e aberta a
-// extensao, todas as fabricas concretas precisam ser alteradas junto.
-// ---------------------------------------------------------------------------
-
 abstract class DecoderFactory {
 
     abstract RegistrarClienteDecoder createRegistrarClienteDecoder();
 
     abstract RegistrarContaDecoder createRegistrarContaDecoder();
 
-    // Ponto unico do sistema que conhece as fabricas concretas. E aqui que a
-    // dependencia fica confinada; num sistema real isso viria de configuracao,
-    // de um Map registrado na inicializacao ou de um ServiceLoader, e nao de um
-    // switch como este.
     static DecoderFactory fabricaParaOrigem(String origem) {
         switch (origem.toUpperCase()) {
             case "XML":
@@ -102,11 +67,6 @@ abstract class DecoderFactory {
         }
     }
 }
-
-
-// ---------------------------------------------------------------------------
-// FAMILIA 1 - origem XML (parceiro legado)
-// ---------------------------------------------------------------------------
 
 class XmlDecoderFactory extends DecoderFactory {
 
@@ -125,8 +85,7 @@ class XmlRegistrarClienteDecoder implements RegistrarClienteDecoder {
 
     @Override
     public MsgRegistrarCliente decode(String textoMsg) {
-        // Parsing real de XML omitido - o que importa no padrao e que este
-        // decoder so existe para a familia XML.
+
         return new MsgRegistrarCliente(extrairTag(textoMsg, "nome"),
                                        extrairTag(textoMsg, "cpf"));
     }
@@ -162,15 +121,6 @@ class XmlRegistrarContaDecoder implements RegistrarContaDecoder {
         return xml.substring(inicio + abertura.length(), fim);
     }
 }
-
-
-// ---------------------------------------------------------------------------
-// FAMILIA 2 - origem JSON (parceiro novo)
-//
-// Acrescentar uma origem inteira nao exige tocar em ServicoIntegracao: basta
-// uma nova fabrica concreta + seus decoders. Esse e o eixo em que o padrao e
-// aberto a extensao.
-// ---------------------------------------------------------------------------
 
 class JsonDecoderFactory extends DecoderFactory {
 
@@ -231,28 +181,16 @@ class JsonRegistrarContaDecoder implements RegistrarContaDecoder {
     }
 }
 
-
-// ---------------------------------------------------------------------------
-// CLIENTE
-//
-// Codigo original do exemplo, agora compilavel. Repare no que ele NAO tem:
-// nenhuma mencao a XML ou JSON, nenhum `new` de decoder, nenhum if por origem.
-// Ele depende so das abstracoes DecoderFactory / *Decoder / Msg*.
-// ---------------------------------------------------------------------------
-
 public class ServicoIntegracao {
 
     public void registrarCliente(String textoMsg, String origem) {
-        // 1. obtem a familia de decoders coerente com a origem
+
         DecoderFactory decoderFactory = DecoderFactory.fabricaParaOrigem(origem);
 
-        // 2. pede a fabrica o produto especifico desta operacao
         RegistrarClienteDecoder msgDecoder = decoderFactory.createRegistrarClienteDecoder();
 
-        // 3. daqui pra frente o formato de origem ja nao existe mais
         MsgRegistrarCliente msg = msgDecoder.decode(textoMsg);
 
-        // codigo para tratamento da mensagem MsgRegistrarCliente
         System.out.println("Cliente registrado: " + msg.getNome() + " / " + msg.getCpf());
     }
 
@@ -261,11 +199,8 @@ public class ServicoIntegracao {
         RegistrarContaDecoder msgDecoder = decoderFactory.createRegistrarContaDecoder();
         MsgRegistrarConta msg = msgDecoder.decode(textoMsg);
 
-        // codigo para tratamento da mensagem MsgRegistrarConta
         System.out.println("Conta registrada: " + msg.getAgencia() + " / " + msg.getNumero());
     }
-
-    // codigo para demais mensagens
 
     public static void main(String[] args) {
         ServicoIntegracao servico = new ServicoIntegracao();

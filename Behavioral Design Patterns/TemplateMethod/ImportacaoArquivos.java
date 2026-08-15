@@ -36,11 +36,8 @@ class RegistroImportado {
     }
 }
 
-// AbstractClass
 abstract class ImportadorArquivo {
 
-    // O template method é FINAL de propósito: a subclasse muda os passos, não a ordem nem a
-    // estrutura. Tirar o final devolve a ela o poder de quebrar o fluxo.
     public final ResumoImportacao importar(List<String> linhas) {
         System.out.println("importando via " + formato());
 
@@ -67,18 +64,16 @@ abstract class ImportadorArquivo {
 
             return new ResumoImportacao(formato(), registros.size(), rejeitados);
         } finally {
-            fechar();   // a base garante isso para todas as subclasses, inclusive em caso de erro
+            fechar();
         }
     }
 
-    // Passos ABSTRATOS: a subclasse é obrigada a fornecer. É o que varia entre os formatos.
     protected abstract String formato();
 
     protected abstract boolean cabecalhoValido(String primeiraLinha);
 
     protected abstract RegistroImportado converter(String linha);
 
-    // Passos CONCRETOS: iguais para todos, não se repetem em lugar nenhum.
     protected void abrir() {
         System.out.println("  abrindo origem");
     }
@@ -91,7 +86,6 @@ abstract class ImportadorArquivo {
         System.out.println("  fechando origem");
     }
 
-    // GANCHO (hook): passo opcional, vazio na base. É o que o diferencia de um método abstrato.
     protected void aoTerminar(List<RegistroImportado> registros) {
     }
 }
@@ -157,7 +151,6 @@ class ImportadorPosicional extends ImportadorArquivo {
                                      Integer.parseInt(linha.substring(26, 30).trim()));
     }
 
-    // Só este formato precisa conferir o total do rodapé - é para isso que serve o gancho.
     @Override
     protected void aoTerminar(List<RegistroImportado> registros) {
         int total = 0;
@@ -198,8 +191,6 @@ class ImportadorJsonSimplificado extends ImportadorArquivo {
         return par.substring(par.indexOf(':') + 1).trim();
     }
 
-    // Sobrescrever um passo CONCRETO é permitido; quebrar a cadeia do super é o risco conhecido
-    // da variação por herança.
     @Override
     protected void gravar(RegistroImportado registro) {
         System.out.print("  [json] ");
@@ -207,7 +198,6 @@ class ImportadorJsonSimplificado extends ImportadorArquivo {
     }
 }
 
-// Cliente
 class ImportacaoArquivos {
 
     public void executar(ImportadorArquivo importador, List<String> linhas) {
@@ -234,8 +224,3 @@ class ImportacaoArquivos {
                 "{\"documento\":11122233344,\"nome\":Ana,\"valor\":15000}"));
     }
 }
-
-//O princípio por trás é o "Hollywood Principle": não nos chame, nós chamamos você. É a superclasse
-//que controla o fluxo e chama os passos da subclasse - inversão de controle.
-//Se a subclasse precisa implementar oito métodos, há mais de uma responsabilidade sendo variada
-//ao mesmo tempo.

@@ -1,3 +1,11 @@
+//Listar um catálogo de produtos que ora está em array, ora em lista ligada, ora num ArrayList da
+//biblioteca padrão, e ainda oferecer um percurso só de uma categoria. Se o cliente usar índice,
+//fica preso ao array; se usar ponteiro, fica preso à lista - e trocar a estrutura quebra todo
+//mundo.
+//O Iterator fornece uma maneira de acessar sequencialmente os elementos de um agregado SEM expor
+//a sua representação interna. Cada iterador guarda a própria posição, então vários percursos
+//podem correr ao mesmo tempo sobre a mesma coleção.
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;

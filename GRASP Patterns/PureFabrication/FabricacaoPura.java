@@ -35,7 +35,6 @@ class ItemPedido {
     }
 }
 
-// Pedido continua sendo APENAS pedido: nenhuma linha de SQL, e-mail ou arquivo aqui dentro.
 class Pedido {
 
     private final String codigo;
@@ -51,7 +50,6 @@ class Pedido {
         itens.add(new ItemPedido(sku, quantidade, precoUnitarioEmCentavos));
     }
 
-    // Expert aplicado corretamente: quem tem os itens calcula o total.
     public int totalEmCentavos() {
         int total = 0;
         for (ItemPedido item : itens) {
@@ -73,9 +71,6 @@ class Pedido {
     }
 }
 
-// Fabricação pura 1 - Repositório
-// Nenhum usuário fala em "repositório": foi inventado para concentrar a persistência num lugar
-// coeso, mantendo Pedido limpo.
 interface PedidoRepository {
 
     void salvar(Pedido pedido);
@@ -112,9 +107,6 @@ class PedidoRepositoryEmMemoria implements PedidoRepository {
     }
 }
 
-// Fabricação pura 2 - Serviço de domínio
-// Regra que envolve MAIS DE UMA entidade e não pertence a nenhuma: o frete em Pedido o acoplaria à
-// tabela de transportadoras, e na transportadora o acoplaria a pedido.
 class CalculoFreteService {
 
     private final Map<String, Integer> tabelaPorRegiao = Map.of(
@@ -130,8 +122,6 @@ class CalculoFreteService {
     }
 }
 
-// Fabricação pura 3 - Assembler
-// Sem ela, Pedido teria um "paraJson()" e passaria a conhecer o formato do canal.
 class PedidoJsonAssembler {
 
     public String paraJson(Pedido pedido) {
@@ -148,7 +138,6 @@ class PedidoJsonAssembler {
     }
 }
 
-// Fabricação pura 4 - utilitário sem estado. java.lang.Math é exatamente isso.
 final class Dinheiro {
 
     private Dinheiro() {
@@ -187,10 +176,3 @@ class FabricacaoPura {
                                    .calcularEmCentavos(pequeno, "NORDESTE")));
     }
 }
-
-//Nomes que indicam fabricação pura: Repository, DAO, Service, Factory, Assembler, Validator,
-//Mapper, Adapter, Controller - nenhum existe no vocabulário do usuário.
-//O risco: usá-la em excesso esvazia o domínio. Se TODA regra vira um "Service" e as entidades
-//ficam só com getters, voltamos ao modelo anêmico. Tente o Expert primeiro; fabrique só quando
-//segui-lo prejudicar de fato a coesão ou o acoplamento.
-//Praticamente todo padrão do GoF é uma fabricação pura - nenhum representa conceito do domínio.

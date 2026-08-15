@@ -7,7 +7,6 @@
 import java.util.ArrayList;
 import java.util.List;
 
-// Visitor: um método por tipo concreto de elemento.
 interface VisitanteAtivo<R> {
 
     R visitarAcao(Acao acao);
@@ -17,7 +16,6 @@ interface VisitanteAtivo<R> {
     R visitarTituloPublico(TituloPublico titulo);
 }
 
-// Element: a ÚNICA coisa que o domínio precisa oferecer é o accept.
 interface Ativo {
     <R> R aceitar(VisitanteAtivo<R> visitante);
 }
@@ -55,9 +53,6 @@ class Acao implements Ativo {
         return (precoAtualEmCentavos - precoMedioEmCentavos) * quantidade;
     }
 
-    // DOUBLE DISPATCH: a 1ª chamada resolve o TIPO DO ELEMENTO pelo polimorfismo normal; a 2ª
-    // resolve a OPERAÇÃO pelo tipo do visitante. Java só despacha sobre o receptor, nunca sobre o
-    // argumento - por isso este "vai e volta" é necessário.
     @Override
     public <R> R aceitar(VisitanteAtivo<R> visitante) {
         return visitante.visitarAcao(this);
@@ -134,7 +129,6 @@ class TituloPublico implements Ativo {
     }
 }
 
-// Toda a regra fiscal reunida em UMA classe, em vez de espalhada por três.
 class CalculoImposto implements VisitanteAtivo<Integer> {
 
     @Override
@@ -145,7 +139,7 @@ class CalculoImposto implements VisitanteAtivo<Integer> {
 
     @Override
     public Integer visitarFundoImobiliario(FundoImobiliario fundo) {
-        return 0;   // rendimento de FII é isento para pessoa física
+        return 0;
     }
 
     @Override
@@ -158,7 +152,6 @@ class CalculoImposto implements VisitanteAtivo<Integer> {
     }
 }
 
-// Operação NOVA sem tocar em nenhuma classe de ativo: é esse o ganho do padrão.
 class ValorDeMercado implements VisitanteAtivo<Integer> {
 
     @Override
@@ -177,7 +170,6 @@ class ValorDeMercado implements VisitanteAtivo<Integer> {
     }
 }
 
-// O tipo de retorno pode ser qualquer um, graças ao parâmetro genérico da interface.
 class DescricaoAtivo implements VisitanteAtivo<String> {
 
     @Override
@@ -196,7 +188,6 @@ class DescricaoAtivo implements VisitanteAtivo<String> {
     }
 }
 
-// Um visitante pode acumular resultado parcial entre as visitas.
 class RendaMensalProjetada implements VisitanteAtivo<Void> {
 
     private int totalEmCentavos;
@@ -223,7 +214,6 @@ class RendaMensalProjetada implements VisitanteAtivo<Void> {
     }
 }
 
-// Cliente: sem instanceof, sem cast, sem switch por tipo.
 class OperacoesSobreAtivos {
 
     private final List<Ativo> carteira = new ArrayList<>();
@@ -274,10 +264,3 @@ class OperacoesSobreAtivos {
         System.out.println("renda mensal projetada: " + renda.getTotalEmCentavos());
     }
 }
-
-//O trade-off: é FÁCIL acrescentar uma OPERAÇÃO nova (uma classe) e DIFÍCIL acrescentar um TIPO
-//novo de elemento (altera a interface do visitante e todos os visitantes existentes). Use quando a
-//hierarquia for estável e as operações variarem muito; no caso contrário, polimorfismo comum.
-//Outro custo: o visitante precisa do estado do elemento, o que empurra a classe de domínio a
-//expor getters.
-//Onde aparece: compiladores percorrendo a árvore sintática e o FileVisitor de Files.walkFileTree.

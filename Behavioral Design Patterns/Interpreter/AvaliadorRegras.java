@@ -7,7 +7,6 @@
 import java.util.HashMap;
 import java.util.Map;
 
-// Contexto: o estado sobre o qual a expressão é avaliada, passado a toda a árvore.
 class ContextoRegra {
     private final Map<String, Boolean> fatos = new HashMap<>();
     private final Map<String, Integer> numeros = new HashMap<>();
@@ -31,14 +30,11 @@ class ContextoRegra {
     }
 }
 
-// AbstractExpression: a estrutura é um Composite - terminais são folhas, não terminais são nós.
 interface Expressao {
     boolean interpretar(ContextoRegra contexto);
 
     String emTexto();
 }
-
-// Expressões TERMINAIS: resolvem consultando diretamente o contexto.
 
 class Fato implements Expressao {
     private final String nome;
@@ -95,8 +91,6 @@ class Literal implements Expressao {
         return String.valueOf(valor);
     }
 }
-
-// Expressões NÃO TERMINAIS: contêm outras expressões; a recursão é o mecanismo de avaliação.
 
 class E implements Expressao {
     private final Expressao esquerda;
@@ -156,8 +150,6 @@ class Nao implements Expressao {
     }
 }
 
-// O parser NÃO faz parte do padrão - o Interpreter cuida da avaliação, não da análise sintática.
-// Este é mínimo, em notação prefixada, só para mostrar de onde a árvore vem no mundo real.
 class ParserRegra {
 
     private final String[] tokens;
@@ -191,7 +183,6 @@ class ParserRegra {
     }
 }
 
-// Cliente
 class AvaliadorRegras {
 
     public void avaliar(String nomeRegra, Expressao regra, ContextoRegra contexto) {
@@ -216,7 +207,6 @@ class AvaliadorRegras {
                 new E(new MaiorQue("valorPedido", 5000), new Nao(new Fato("clienteInadimplente"))));
         avaliador.avaliar("frete grátis", freteGratis, pedido);
 
-        // A MESMA árvore vinda de texto: é assim que a regra deixa de ser código.
         Expressao daConfiguracao = new ParserRegra("OU primeiraCompra E valorPedido>5000 NAO clienteInadimplente")
                 .analisar();
         avaliador.avaliar("frete grátis (do arquivo)", daConfiguracao, pedido);
@@ -224,14 +214,9 @@ class AvaliadorRegras {
         Expressao outraPolitica = new ParserRegra("E clienteVip NAO clienteInadimplente").analisar();
         avaliador.avaliar("atendimento prioritário", outraPolitica, pedido);
 
-        // A árvore é reutilizável; o contexto é que muda.
         ContextoRegra outroPedido = new ContextoRegra()
                 .defineNumero("valorPedido", 300)
                 .defineFato("clienteVip", false);
         avaliador.avaliar("desconto vip (outro pedido)", descontoVip, outroPedido);
     }
 }
-
-//Só se paga quando a gramática é PEQUENA e ESTÁVEL: com muitas regras o número de classes explode
-//e um gerador de parser (ANTLR, JavaCC) passa a valer mais. É o padrão do GoF menos usado.
-//Onde aparece: java.util.regex.Pattern, expressões de JPQL/Criteria e o Specification pattern.

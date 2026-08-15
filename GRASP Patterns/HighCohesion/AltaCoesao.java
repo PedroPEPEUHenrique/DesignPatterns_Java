@@ -1,3 +1,10 @@
+//GRASP - HIGH COHESION
+//Problema: como manter cada classe focada, compreensível e barata de manter?
+//Solução: atribuir responsabilidades de modo que cada classe fique com um conjunto PEQUENO e
+//FORTEMENTE RELACIONADO delas. A conta que valida CPF, gera HTML, envia e-mail, grava no banco e
+//converte moeda muda por cinco motivos diferentes; separada, cada peça muda por um só. Alta coesão
+//e baixo acoplamento andam juntos - buscar um sozinho degenera o outro.
+
 import java.util.ArrayList;
 import java.util.List;
 

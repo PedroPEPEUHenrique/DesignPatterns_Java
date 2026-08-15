@@ -38,7 +38,6 @@ class Item {
     }
 }
 
-// Produto: imutável, sem setter. Só é viável porque o builder junta os dados antes do construtor.
 class Pedido {
     private final Cliente cliente;
     private final List<Item> itens;
@@ -88,12 +87,10 @@ class Pedido {
         return embalagemPresente;
     }
 
-    // Os obrigatórios entram aqui e não têm método "with": o compilador cobra.
     public static PedidoBuilder para(Cliente cliente) {
         return new PedidoBuilder(cliente);
     }
 
-    // Builder
     static class PedidoBuilder {
         private final Cliente cliente;
         private final List<Item> itens = new ArrayList<>();
@@ -106,7 +103,6 @@ class Pedido {
             this.cliente = cliente;
         }
 
-        // Devolver "this" é o que permite encadear as chamadas (interface fluente).
         public PedidoBuilder comItem(String descricao, int valorEmCentavos) {
             itens.add(new Item(descricao, valorEmCentavos));
             return this;
@@ -132,8 +128,6 @@ class Pedido {
             return this;
         }
 
-        // A validação vive no build(): só aqui o objeto está completo e regras que envolvem mais
-        // de um campo podem ser checadas.
         public Pedido build() {
             if (cliente == null) {
                 throw new IllegalStateException("pedido exige cliente");
@@ -149,7 +143,6 @@ class Pedido {
     }
 }
 
-// Cliente
 class RegistroPedido {
 
     public void registrar() {
@@ -186,7 +179,3 @@ class RegistroPedido {
         new RegistroPedido().registrar();
     }
 }
-
-//O GoF descreve o Builder com um Director, que conhece a SEQUÊNCIA de passos e permite trocar a
-//representação final. A variação acima, de Joshua Bloch, dispensa o Director e foca em
-//legibilidade e imutabilidade - é a que se vê no dia a dia em Java.

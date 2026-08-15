@@ -28,8 +28,6 @@ class Despesa {
     }
 }
 
-// Handler
-// A referência ao PRÓXIMO substitui o if/else: a estrutura de decisão vira estrutura de ligação.
 abstract class Aprovador {
 
     private Aprovador proximo;
@@ -49,7 +47,7 @@ abstract class Aprovador {
             proximo.aprovar(despesa);
             return;
         }
-        // Fim da corrente sem tratamento: falhar explicitamente em vez de ignorar em silêncio.
+
         throw new IllegalStateException("nenhum aprovador para " + despesa.getDescricao());
     }
 
@@ -102,7 +100,6 @@ class Diretor extends Aprovador {
     }
 }
 
-// Elo final que aceita tudo: sem ele, valores altos chegariam ao fim e lançariam exceção.
 class Conselho extends Aprovador {
 
     @Override
@@ -121,7 +118,6 @@ class Conselho extends Aprovador {
     }
 }
 
-// Elo que NÃO aprova, apenas observa e repassa.
 class RegistroAuditoria extends Aprovador {
 
     @Override
@@ -137,7 +133,6 @@ class RegistroAuditoria extends Aprovador {
     }
 }
 
-// Elo que interrompe a corrente por uma razão diferente da alçada.
 class BloqueioOrcamentario extends Aprovador {
     private int saldoDisponivelEmCentavos;
 
@@ -162,7 +157,6 @@ class BloqueioOrcamentario extends Aprovador {
     }
 }
 
-// Cliente: conhece apenas o PRIMEIRO elo e a abstração Aprovador.
 class AprovacaoDespesa {
 
     private final Aprovador inicioDaCorrente;
@@ -177,7 +171,7 @@ class AprovacaoDespesa {
     }
 
     public static void main(String[] args) {
-        // A ordem da montagem é o que define a política - e ela é dado, não código.
+
         Aprovador inicio = new RegistroAuditoria();
         inicio.encadear(new BloqueioOrcamentario(5000000))
               .encadear(new Supervisor())
@@ -204,7 +198,3 @@ class AprovacaoDespesa {
         }
     }
 }
-
-//Onde aparece: filtros de Servlet (FilterChain), interceptadores de CDI/EJB, middlewares de
-//frameworks web e o próprio tratamento de exceções - um throw sobe a pilha até encontrar um catch
-//que trate aquele tipo.

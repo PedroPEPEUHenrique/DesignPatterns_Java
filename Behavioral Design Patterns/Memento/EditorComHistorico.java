@@ -7,7 +7,6 @@
 import java.util.ArrayDeque;
 import java.util.Deque;
 
-// Originator: só ele cria mementos e só ele sabe lê-los.
 class Documento {
 
     private String conteudo = "";
@@ -34,7 +33,6 @@ class Documento {
         selecao = "";
     }
 
-    // Entrega um instantâneo completo sem expor NENHUM getter dos campos internos.
     public Instantaneo salvar() {
         return new Instantaneo(conteudo, posicaoCursor, selecao);
     }
@@ -50,8 +48,6 @@ class Documento {
                            + " | seleção: \"" + selecao + "\"");
     }
 
-    // Memento: imutável e com campos privados. O cuidador consegue guardá-lo e devolvê-lo, mas
-    // não inspecioná-lo - essa assimetria de acesso é o que preserva o encapsulamento.
     public static final class Instantaneo {
         private final String conteudo;
         private final int posicaoCursor;
@@ -63,7 +59,6 @@ class Documento {
             this.selecao = selecao;
         }
 
-        // Interface ESTREITA: um rótulo para a tela de histórico, nada da estrutura interna.
         public String descricao() {
             return "\"" + resumo() + "\"";
         }
@@ -74,7 +69,6 @@ class Documento {
     }
 }
 
-// Caretaker: guarda os mementos e decide QUANDO restaurar, sem saber o que há dentro deles.
 class HistoricoEdicao {
 
     private final Documento documento;
@@ -87,12 +81,10 @@ class HistoricoEdicao {
         this.limite = limite;
     }
 
-    // Chamado ANTES de cada alteração: guarda-se o estado ao qual se quer voltar.
     public void registrar() {
         pilhaDesfazer.push(documento.salvar());
-        pilhaRefazer.clear();   // um caminho novo invalida o "refazer" anterior
+        pilhaRefazer.clear();
 
-        // Mementos ocupam memória: um editor real limita a profundidade ou grava só o delta.
         if (pilhaDesfazer.size() > limite) {
             pilhaDesfazer.removeLast();
         }
@@ -121,13 +113,12 @@ class HistoricoEdicao {
     public void listar() {
         System.out.println("  histórico (" + pilhaDesfazer.size() + " estados):");
         for (Documento.Instantaneo instantaneo : pilhaDesfazer) {
-            // Acessar instantaneo.conteudo aqui nem compila: o campo é privado da classe aninhada.
+
             System.out.println("    " + instantaneo.descricao());
         }
     }
 }
 
-// Cliente
 class EditorComHistorico {
 
     public static void main(String[] args) {
@@ -160,7 +151,3 @@ class EditorComHistorico {
         documento.imprimir();
     }
 }
-
-//Memento x Command: os dois viabilizam desfazer por caminhos opostos. O Memento guarda o ESTADO e
-//volta a ele - simples e sempre correto, mas custa memória. O Command guarda a OPERAÇÃO e a
-//reverte - barato, porém exige que toda operação tenha inversa.

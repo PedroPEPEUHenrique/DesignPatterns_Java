@@ -9,12 +9,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-// Mediator: a operação é genérica de propósito - "componente X sofreu o evento Y".
 interface MediadorTela {
     void notificar(Componente origem, String evento);
 }
 
-// Colleague: conhece SÓ o mediador, nenhuma referência aos outros componentes.
 abstract class Componente {
 
     protected MediadorTela mediador;
@@ -57,7 +55,6 @@ class CampoCliente extends Componente {
         this.vip = vip;
         System.out.println("usuário selecionou o cliente " + cliente + (vip ? " (VIP)" : ""));
 
-        // Só anuncia o que aconteceu; não sabe quem se importa nem o que muda na tela.
         mediador.notificar(this, "clienteSelecionado");
     }
 
@@ -132,7 +129,6 @@ class BotaoFinalizar extends Componente {
     }
 }
 
-// ConcreteMediator: TODA a lógica de interação da tela, num lugar só e legível de cima a baixo.
 class MediadorTelaPedido implements MediadorTela {
 
     private final CampoCliente campoCliente;
@@ -184,8 +180,6 @@ class MediadorTelaPedido implements MediadorTela {
     }
 }
 
-// MESMOS componentes, política de tela diferente - só é possível porque a regra de interação não
-// está dentro deles.
 class MediadorTelaSimplificada implements MediadorTela {
 
     private final Map<String, Componente> componentes = new HashMap<>();
@@ -205,7 +199,6 @@ class MediadorTelaSimplificada implements MediadorTela {
     }
 }
 
-// Cliente
 class TelaCadastroPedido {
 
     public static void main(String[] args) {
@@ -229,8 +222,3 @@ class TelaCadastroPedido {
         new MediadorTelaSimplificada(new CampoCliente(), new ListaItens(), new BotaoFinalizar());
     }
 }
-
-//Mediator x Observer: no Observer a comunicação é unidirecional e o emissor não sabe quem escuta;
-//no Mediator ela é centralizada e o mediador CONHECE todos os colegas. É comum implementar o
-//mediador usando Observer por baixo.
-//Risco: o mediador tende a crescer. Se vira o único lugar com lógica, virou um God Object.

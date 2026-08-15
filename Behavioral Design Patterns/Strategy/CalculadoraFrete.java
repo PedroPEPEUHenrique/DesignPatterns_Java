@@ -37,9 +37,6 @@ class Encomenda {
     }
 }
 
-// Strategy
-// A assinatura é a mesma para todos e recebe tudo de que qualquer estratégia possa precisar -
-// definir bem esse contrato é a parte mais delicada do padrão.
 interface EstrategiaFrete {
 
     int calcularEmCentavos(Encomenda encomenda);
@@ -50,8 +47,6 @@ interface EstrategiaFrete {
         return 10;
     }
 }
-
-// Estratégias concretas: cada uma isolada, testável sozinha e sem saber que as outras existem.
 
 class FreteEconomico implements EstrategiaFrete {
 
@@ -148,7 +143,6 @@ class FreteTransportadoraParceira implements EstrategiaFrete {
     }
 }
 
-// Estratégia que COMPÕE outras: o contexto não a distingue de uma estratégia simples.
 class FreteMaisBarato implements EstrategiaFrete {
 
     private final EstrategiaFrete[] candidatas;
@@ -178,7 +172,6 @@ class FreteMaisBarato implements EstrategiaFrete {
     }
 }
 
-// Context: nenhum if, nenhuma regra de cálculo. Uma modalidade nova não muda esta classe.
 class CalculadoraFrete {
 
     private EstrategiaFrete estrategia;
@@ -187,7 +180,6 @@ class CalculadoraFrete {
         this.estrategia = estrategia;
     }
 
-    // Trocar o algoritmo em tempo de execução é o que a herança não permitiria.
     public void setEstrategia(EstrategiaFrete estrategia) {
         this.estrategia = estrategia;
     }
@@ -218,8 +210,6 @@ class CalculadoraFrete {
                 new FreteEconomico(), new FreteExpresso(), new FreteTransportadoraParceira()));
         calculadora.cotar(encomenda);
 
-        // Não cabe lambda aqui porque a interface declara dois métodos abstratos - exemplo de como
-        // o desenho da interface afeta a ergonomia do padrão.
         System.out.println("promoção pontual:");
         calculadora.setEstrategia(new EstrategiaFrete() {
             @Override
@@ -235,8 +225,3 @@ class CalculadoraFrete {
         calculadora.cotar(encomenda);
     }
 }
-
-//Strategy x State: no Strategy quem escolhe é o cliente, de fora, e as estratégias se ignoram.
-//Strategy x Template Method: o Template Method varia por HERANÇA, com o esqueleto fixo na
-//superclasse; o Strategy varia por COMPOSIÇÃO, trocável em tempo de execução.
-//Na biblioteca padrão: o Comparator passado a Collections.sort() é uma estratégia de ordenação.

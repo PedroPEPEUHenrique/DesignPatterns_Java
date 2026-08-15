@@ -30,8 +30,6 @@ class ItemPedido {
     private final int quantidade;
     private final int precoUnitarioEmCentavos;
 
-    // Construtor com visibilidade de PACOTE: só o Pedido cria um item. Isso torna a regra do
-    // Creator verificável pelo compilador, em vez de ser convenção que alguém vai furar.
     ItemPedido(Produto produto, int quantidade, int precoUnitarioEmCentavos) {
         this.produto = produto;
         this.quantidade = quantidade;
@@ -55,7 +53,6 @@ class ItemPedido {
     }
 }
 
-// Pedido AGREGA ItemPedido e TEM os dados de inicialização: por essas duas razões, é ele quem cria.
 class Pedido {
 
     private final String codigo;
@@ -65,8 +62,6 @@ class Pedido {
         this.codigo = codigo;
     }
 
-    // O cliente diz O QUE quer, não COMO construir. Como o pedido controla a criação, ele pode
-    // aplicar regras que ninguém consegue burlar.
     public void adicionarItem(Produto produto, int quantidade) {
         if (quantidade < 1 || quantidade > 100) {
             throw new IllegalArgumentException("quantidade fora da faixa permitida: " + quantidade);
@@ -82,7 +77,6 @@ class Pedido {
             }
         }
 
-        // O preço é congelado na criação, e é o pedido que sabe disso.
         itens.add(new ItemPedido(produto, quantidade, produto.getPrecoVigenteEmCentavos()));
     }
 
@@ -94,7 +88,6 @@ class Pedido {
         return total;
     }
 
-    // Cópia imutável: ninguém adiciona item por fora, driblando adicionarItem().
     public List<ItemPedido> getItens() {
         return Collections.unmodifiableList(itens);
     }
@@ -104,7 +97,6 @@ class Pedido {
     }
 }
 
-// Quem REGISTRA instâncias também é candidato a criador.
 class Cliente {
 
     private final String nome;
@@ -134,8 +126,6 @@ class Criador {
     public static void main(String[] args) {
         Cliente ana = new Cliente("Ana Souza");
 
-        // A camada de aplicação nunca faz "new ItemPedido(...)" - nem conseguiria, se as classes
-        // estivessem em pacotes diferentes.
         Pedido pedido = ana.abrirPedido();
 
         Produto teclado = new Produto("Teclado", 25000);
@@ -143,7 +133,7 @@ class Criador {
 
         pedido.adicionarItem(teclado, 2);
         pedido.adicionarItem(mouse, 1);
-        pedido.adicionarItem(teclado, 3);   // consolida com o item existente
+        pedido.adicionarItem(teclado, 3);
 
         System.out.println("pedido " + pedido.getCodigo() + " de " + ana.getNome());
         System.out.println("  linhas: " + pedido.getItens().size());
@@ -159,10 +149,3 @@ class Criador {
         System.out.println("pedidos de " + ana.getNome() + ": " + ana.quantidadeDePedidos());
     }
 }
-
-//Quem cria fica ACOPLADO ao que cria. Escolher como criador uma classe que já estava acoplada ao
-//objeto criado não acrescenta acoplamento nenhum - por isso o Creator é aplicação direta do Low
-//Coupling.
-//Quando NÃO seguir: se a criação for complexa (muitas variantes, escolha de implementação),
-//delegue a um objeto especializado - é aí que entram Factory Method, Abstract Factory, Builder e
-//Prototype.

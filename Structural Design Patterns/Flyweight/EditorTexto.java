@@ -9,8 +9,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-// Estado INTRÍNSECO: não depende do contexto e por isso pode ser compartilhado.
-// A imutabilidade não é detalhe - um flyweight mutável compartilhado seria um bug garantido.
 final class CaractereFlyweight {
     private final char simbolo;
     private final String fonte;
@@ -24,8 +22,6 @@ final class CaractereFlyweight {
         this.cor = cor;
     }
 
-    // O estado EXTRÍNSECO chega como parâmetro: o que não pode ser compartilhado é passado na
-    // chamada, não guardado no objeto.
     void desenhar(int linha, int coluna) {
         System.out.println("  '" + simbolo + "' em (" + linha + "," + coluna + ") "
                            + fonte + " " + tamanho + " " + cor);
@@ -35,8 +31,6 @@ final class CaractereFlyweight {
         return simbolo;
     }
 
-    // FlyweightFactory: garante o compartilhamento. Sem ela não existe padrão, só uma classe
-    // imutável qualquer.
     static class Fabrica {
         private final Map<String, CaractereFlyweight> cache = new HashMap<>();
 
@@ -53,7 +47,6 @@ final class CaractereFlyweight {
     }
 }
 
-// Estado EXTRÍNSECO, mantido pelo cliente: dois inteiros e uma referência compartilhada.
 class PosicaoCaractere {
     private final CaractereFlyweight glifo;
     private final int linha;
@@ -74,7 +67,6 @@ class PosicaoCaractere {
     }
 }
 
-// Cliente
 class EditorTexto {
 
     private final CaractereFlyweight.Fabrica fabrica = new CaractereFlyweight.Fabrica();
@@ -82,7 +74,7 @@ class EditorTexto {
 
     public void digitar(String texto, String fonte, int tamanho, String cor, int linha) {
         for (int coluna = 0; coluna < texto.length(); coluna++) {
-            // Sempre pela fábrica: um "new" direto aqui destruiria o compartilhamento.
+
             CaractereFlyweight glifo = fabrica.obter(texto.charAt(coluna), fonte, tamanho, cor);
             documento.add(new PosicaoCaractere(glifo, linha, coluna));
         }
@@ -110,7 +102,7 @@ class EditorTexto {
                 if (primeiro == null) {
                     primeiro = posicao.getGlifo();
                 } else {
-                    return primeiro == posicao.getGlifo();   // == compara REFERÊNCIA, de propósito
+                    return primeiro == posicao.getGlifo();
                 }
             }
         }
@@ -122,14 +114,9 @@ class EditorTexto {
 
         editor.digitar("banana", "Times", 12, "preto", 0);
         editor.digitar("cabana", "Times", 12, "preto", 1);
-        editor.digitar("aba", "Arial", 12, "vermelho", 2);   // formatação diferente = flyweight novo
+        editor.digitar("aba", "Arial", 12, "vermelho", 2);
 
         editor.renderizar();
         editor.estatisticas();
     }
 }
-
-//Na biblioteca padrão: Integer.valueOf() mantém cache de -128 a 127 - por isso
-//Integer.valueOf(100) == Integer.valueOf(100) dá true e com 1000 dá false. O pool de literais de
-//String segue a mesma ideia.
-//Se o estado intrínseco não se repete muito, o mapa fica do tamanho da lista e não se ganha nada.
