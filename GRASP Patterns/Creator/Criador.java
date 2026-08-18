@@ -1,7 +1,6 @@
 //GRASP - CREATOR
 //Problema: quem deve criar uma instância de A?
-//Solução: a classe B que AGREGA, CONTÉM, REGISTRA ou USA A de perto, ou que TEM OS DADOS de
-//inicialização de A.
+//Solução: a classe B que AGREGA, CONTÉM, REGISTRA ou USA A de perto, ou que TEM OS DADOS de inicialização de A.
 
 import java.util.ArrayList;
 import java.util.Collections;
